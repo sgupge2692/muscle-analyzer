@@ -7,3 +7,16 @@ __pycache__/
 *.mp4
 *.task
 data/raw/
+# データセット（大容量・ライセンス制限）
+data/raw/
+data/processed/*.pkl
+data/processed/*.mp4
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Python
+__pycache__/
+*.pyc
+.venv/
