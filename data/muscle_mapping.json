@@ -22,142 +22,999 @@
     "19": "Wrists"
   },
   "exercise_muscle_mapping": {
-    "1-Leg_Glute_Bridge": [10, 11, 12, 17],
-    "Archer_Push-ups": [1, 2, 4, 6],
-    "ArmScissors": [2, 3, 6],
-    "Back_Arch_Balance_Hold": [11, 17],
-    "Backfists": [2, 3, 4, 5, 19],
-    "Balance_Side_Lunges": [12, 13, 15, 17, 18],
-    "Bicep_Extensions": [3, 5],
-    "Bridge_Taps": [10, 12, 17],
-    "Bridges": [10, 11, 12, 17],
-    "Butt_Kicks": [12, 13, 14, 17, 18],
-    "Calf_Raise_Hold": [14, 18],
-    "Chest_Squeeze": [1, 2, 4],
-    "Circle_Push-Ups": [1, 2, 4, 6, 8],
-    "Circle_crunches": [8, 9, 10],
-    "Clapping_Push-Upps": [1, 2, 4, 6],
-    "Climbers": [1, 2, 4, 8, 9, 10, 13],
-    "Converging_Bench_Press": [1, 2, 4],
-    "Cross_Reach_Sit-Ups": [8, 9, 10],
-    "Crunch_Kicks": [9, 10, 13],
-    "Crunches": [9, 10],
-    "Dead_bugs": [9, 10, 11],
-    "Diamond_Pushups": [1, 2, 4],
-    "Downward_Upward_Dogs": [1, 2, 6, 7, 11, 12],
-    "Dragon_Push-Ups": [1, 2, 4, 8, 9],
-    "Flutter_Kicks": [9, 10, 12, 13],
-    "Folded_crunches": [9, 10],
-    "Forward_Bends": [11, 12],
-    "Forward_Lunges": [12, 13, 15, 17],
-    "Front_Kicks": [9, 10, 13, 18],
-    "Full_bridge_reach": [1, 2, 11, 13, 17],
-    "Half_jacks": [2, 13, 14, 17, 18],
-    "Half_shrimp_squats": [12, 13, 17, 18],
-    "HamstringSweeps": [11, 12, 17],
-    "High_Crunches": [9, 10],
-    "High_knees": [9, 10, 13, 14, 18],
-    "Hollow_Hold": [9, 10],
-    "Hooks": [2, 3, 5, 8, 19],
-    "Hooks_kicks": [2, 3, 8, 13, 18],
-    "Hop_Heel_Clicks": [13, 14, 15, 17, 18],
-    "Jump_In_and_Out": [13, 14, 15, 17, 18],
-    "Jump_Rope": [2, 13, 14, 18],
-    "Jump_Squats": [12, 13, 14, 17, 18],
-    "Jump_knee_tucks": [9, 10, 13, 14, 18],
-    "Jumping_Jacks": [2, 13, 14, 15, 17, 18],
-    "Jumping_Lunges": [12, 13, 14, 17, 18],
-    "Knee_Crunches": [9, 10, 13],
-    "Knee_Strikes": [9, 10, 13, 18],
-    "Knee_in_Twists": [8, 9, 10, 13],
-    "Knee_rolls": [8, 9, 10],
-    "Knee_to_Elbow_Crunches": [8, 9, 10, 13],
-    "Knife_hand_strike": [2, 5, 6, 19],
-    "L-Sit_Ups": [9, 10, 13],
-    "Lat_Pull_Down": [3, 6, 7],
-    "Lateral_Squats": [12, 13, 15, 16, 17],
-    "Lunge_Step-Ups": [12, 13, 17, 18],
-    "Lunges": [12, 13, 15, 17],
-    "Lunges_Pulse": [12, 13, 15, 17],
-    "Lunges_With_Twist": [8, 12, 13, 15, 17],
-    "March_Twists": [8, 9, 10, 13, 18],
-    "Meditation": [11],
-    "Mid_Row": [3, 6, 7],
-    "Modified_scissors": [9, 10, 12, 13],
-    "Palm_Strikes": [2, 4, 5, 19],
-    "Pike_push-up": [2, 4, 6],
-    "Plank_Jacks": [1, 2, 4, 8, 9, 10, 13, 14],
-    "Plank_Punches": [1, 2, 4, 5, 8, 9, 10, 19],
-    "Plank_Rotations": [1, 2, 4, 8, 9, 10],
-    "Pop-Up_Tripods": [1, 2, 4, 9, 10, 13],
-    "Prone_Reverse_Fly": [2, 6, 11],
-    "Punches": [2, 3, 4, 5, 8, 19],
-    "Push_ups": [1, 2, 4, 6],
-    "Raise_Arm_Hold": [2, 6],
-    "Raised_Arm_Hold": [2, 6],
-    "Raised_LegPush-Ups": [1, 2, 4, 6, 17],
-    "Raised_leg_circles": [9, 10, 12, 13, 17],
-    "Raised_leg_hold": [9, 10, 13, 17],
-    "Reverse_Angels": [2, 6, 11],
-    "Reverse_Crunches": [9, 10],
-    "Reverse_Grip_Push-Ups": [1, 3, 4, 6],
-    "Reverse_Lunges": [12, 13, 15, 17],
-    "Reverse_Plank_Kicks": [2, 11, 12, 17],
-    "Running": [11, 12, 13, 14, 17, 18],
-    "Scissors": [9, 10, 12, 13],
-    "Seagulls": [2, 6, 11],
-    "Seal_Jacks": [2, 13, 14, 15, 17, 18],
-    "Shoulder_taps": [1, 2, 4, 9, 10],
-    "Shuffle_Wood_Chops": [8, 12, 13, 17],
-    "Side-to-Side_Lunges": [12, 13, 15, 16, 17],
-    "Side_Elbow_Plank": [2, 8, 9, 10],
-    "Side_Plank_Leg_Lift": [2, 8, 15, 16],
-    "Side_leg_raises": [15, 16, 17],
-    "Side_plank_knee_taps": [8, 9, 10, 15],
-    "Side_splits": [12, 15, 16, 17],
-    "Single_Arm_Plank_Jump-Ins": [1, 2, 4, 9, 10, 13],
-    "Single_Leg_hop_on_spot": [13, 14, 17, 18],
-    "Single_leg_bridges": [10, 11, 12, 17],
-    "Single_leg_dead_lifts": [11, 12, 17],
-    "Sit-Up_Punches": [2, 5, 8, 9, 10, 19],
-    "Sit-ups": [9, 10],
-    "Sitting_Punches": [2, 3, 5, 8, 19],
-    "Sitting_Twists": [8, 9, 10],
-    "Skiers": [8, 12, 13, 17, 18],
-    "Sky_Diver_Push-Ups": [1, 2, 4, 6, 11],
-    "Squat_Hold": [12, 13, 15, 17],
-    "Squat_Hold_Side_Bends": [8, 12, 13, 15, 17],
-    "Squat_hold_calf_raises": [12, 13, 14, 17, 18],
-    "Squat_hops": [12, 13, 14, 17, 18],
-    "Standing_Cable_Lateral_Raise": [2, 6],
-    "Standing_Front_Raise": [2, 6],
-    "Standing_Shoulder_Taps": [2, 4, 6],
-    "StarJump": [2, 13, 14, 15, 17, 18],
-    "Superman_Extensions": [6, 11, 12, 17],
-    "Swimming": [2, 6, 7, 11, 12],
-    "Thigh_taps": [9, 10, 13],
-    "Toe_Taps_Hop": [13, 14, 18],
-    "Tree_pose": [13, 14, 15, 17, 18],
-    "Tricep_Dip_Hold": [1, 2, 4, 6],
-    "Turning_Kicks": [8, 13, 15, 17, 18],
-    "Up_and_down_plancks": [1, 2, 4, 8, 9, 10],
-    "V-ups": [9, 10, 12, 13],
-    "W-Arm_Extensions": [2, 6, 11],
-    "Walking": [12, 13, 14, 17, 18],
-    "Wall-Sit": [12, 13, 15, 17],
-    "Windshield_wipers": [8, 9, 10, 12, 13],
-    "hops_on_the_spot": [13, 14, 17, 18],
-    "jumping_TS": [2, 13, 14, 17, 18],
-    "knee_to_elbow_crunches": [8, 9, 10, 13],
-    "plank_walk_outs": [1, 2, 4, 9, 10, 11],
-    "pushup_with_rotations": [1, 2, 4, 8, 9],
-    "raised_arm_circles": [2, 6],
-    "side-to-side_chops": [8, 9, 13, 17],
-    "side_bridges": [8, 15, 16],
-    "side_plank_rotation": [2, 8, 9, 10],
-    "squat_hold_punches": [2, 5, 12, 13, 17, 19],
-    "star_plank": [1, 2, 4, 8, 9, 10, 15],
-    "sumo_squat_calf_raise": [12, 13, 14, 15, 17, 18],
-    "uneven_plank": [1, 2, 4, 8, 9, 10]
+    "1-Leg_Glute_Bridge": [
+      9,
+      10,
+      11,
+      12,
+      17
+    ],
+    "Archer_Push-ups": [
+      1,
+      2,
+      4,
+      6,
+      9,
+      10,
+      11
+    ],
+    "ArmScissors": [
+      2,
+      3,
+      6
+    ],
+    "Back_Arch_Balance_Hold": [
+      11,
+      17
+    ],
+    "Backfists": [
+      2,
+      3,
+      4,
+      5,
+      19
+    ],
+    "Balance_Side_Lunges": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    "Bicep_Extensions": [
+      3,
+      5
+    ],
+    "Bridge_Taps": [
+      10,
+      11,
+      12,
+      17
+    ],
+    "Bridges": [
+      10,
+      11,
+      12,
+      17
+    ],
+    "Butt_Kicks": [
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Calf_Raise_Hold": [
+      11,
+      14,
+      18
+    ],
+    "Chest_Squeeze": [
+      1,
+      2,
+      4
+    ],
+    "Circle_Push-Ups": [
+      1,
+      2,
+      4,
+      6,
+      8,
+      9,
+      10,
+      11
+    ],
+    "Circle_crunches": [
+      8,
+      9,
+      10
+    ],
+    "Clapping_Push-Upps": [
+      1,
+      2,
+      4,
+      6,
+      9,
+      10,
+      11
+    ],
+    "Climbers": [
+      1,
+      2,
+      4,
+      8,
+      9,
+      10,
+      13
+    ],
+    "Converging_Bench_Press": [
+      1,
+      2,
+      4
+    ],
+    "Cross_Reach_Sit-Ups": [
+      8,
+      9,
+      10,
+      13
+    ],
+    "Crunch_Kicks": [
+      8,
+      9,
+      10,
+      13,
+      14
+    ],
+    "Crunches": [
+      8,
+      9,
+      10
+    ],
+    "Dead_bugs": [
+      9,
+      10,
+      11
+    ],
+    "Diamond_Pushups": [
+      1,
+      2,
+      4,
+      9,
+      10,
+      11
+    ],
+    "Downward_Upward_Dogs": [
+      1,
+      2,
+      6,
+      7,
+      11,
+      12
+    ],
+    "Dragon_Push-Ups": [
+      1,
+      2,
+      4,
+      8,
+      9,
+      10,
+      11
+    ],
+    "Flutter_Kicks": [
+      9,
+      10,
+      12,
+      13
+    ],
+    "Folded_crunches": [
+      8,
+      9,
+      10
+    ],
+    "Forward_Bends": [
+      11,
+      12
+    ],
+    "Forward_Lunges": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      17
+    ],
+    "Front_Kicks": [
+      9,
+      10,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Full_bridge_reach": [
+      1,
+      2,
+      11,
+      12,
+      13,
+      17
+    ],
+    "Half_jacks": [
+      2,
+      9,
+      10,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Half_shrimp_squats": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      17,
+      18
+    ],
+    "HamstringSweeps": [
+      11,
+      12,
+      17
+    ],
+    "High_Crunches": [
+      8,
+      9,
+      10
+    ],
+    "High_knees": [
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      18
+    ],
+    "Hollow_Hold": [
+      9,
+      10,
+      13
+    ],
+    "Hooks": [
+      2,
+      3,
+      5,
+      8,
+      11,
+      19
+    ],
+    "Hooks_kicks": [
+      2,
+      3,
+      8,
+      11,
+      13,
+      14,
+      18
+    ],
+    "Hop_Heel_Clicks": [
+      12,
+      13,
+      14,
+      15,
+      17,
+      18
+    ],
+    "Jump_In_and_Out": [
+      12,
+      13,
+      14,
+      15,
+      17,
+      18
+    ],
+    "Jump_Rope": [
+      2,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      18
+    ],
+    "Jump_Squats": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Jump_knee_tucks": [
+      9,
+      10,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Jumping_Jacks": [
+      2,
+      9,
+      10,
+      13,
+      14,
+      15,
+      17,
+      18
+    ],
+    "Jumping_Lunges": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Knee_Crunches": [
+      9,
+      10,
+      13
+    ],
+    "Knee_Strikes": [
+      8,
+      9,
+      10,
+      13,
+      18
+    ],
+    "Knee_in_Twists": [
+      8,
+      9,
+      10,
+      13
+    ],
+    "Knee_rolls": [
+      8,
+      9,
+      10
+    ],
+    "Knee_to_Elbow_Crunches": [
+      8,
+      9,
+      10,
+      13
+    ],
+    "Knife_hand_strike": [
+      2,
+      5,
+      6,
+      8,
+      11,
+      19
+    ],
+    "L-Sit_Ups": [
+      9,
+      10,
+      13
+    ],
+    "Lat_Pull_Down": [
+      3,
+      5,
+      6,
+      7
+    ],
+    "Lateral_Squats": [
+      11,
+      12,
+      13,
+      15,
+      16,
+      17
+    ],
+    "Lunge_Step-Ups": [
+      11,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Lunges": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      17
+    ],
+    "Lunges_Pulse": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      17
+    ],
+    "Lunges_With_Twist": [
+      8,
+      11,
+      12,
+      13,
+      14,
+      15,
+      17
+    ],
+    "March_Twists": [
+      8,
+      9,
+      10,
+      13,
+      18
+    ],
+    "Meditation": [
+      11
+    ],
+    "Mid_Row": [
+      3,
+      5,
+      6,
+      7
+    ],
+    "Modified_scissors": [
+      9,
+      10,
+      12,
+      13
+    ],
+    "Palm_Strikes": [
+      2,
+      4,
+      5,
+      8,
+      11,
+      19
+    ],
+    "Pike_push-up": [
+      1,
+      2,
+      4,
+      6,
+      9,
+      10,
+      11
+    ],
+    "Plank_Jacks": [
+      1,
+      2,
+      4,
+      8,
+      9,
+      10,
+      11,
+      13,
+      14,
+      17
+    ],
+    "Plank_Punches": [
+      1,
+      2,
+      4,
+      5,
+      8,
+      9,
+      10,
+      11,
+      19
+    ],
+    "Plank_Rotations": [
+      1,
+      2,
+      4,
+      8,
+      9,
+      10,
+      11
+    ],
+    "Pop-Up_Tripods": [
+      1,
+      2,
+      4,
+      9,
+      10,
+      13
+    ],
+    "Prone_Reverse_Fly": [
+      2,
+      6,
+      11
+    ],
+    "Punches": [
+      2,
+      3,
+      4,
+      5,
+      8,
+      11,
+      19
+    ],
+    "Push_ups": [
+      1,
+      2,
+      4,
+      6,
+      9,
+      10,
+      11
+    ],
+    "Raise_Arm_Hold": [
+      2,
+      6
+    ],
+    "Raised_Arm_Hold": [
+      2,
+      6
+    ],
+    "Raised_LegPush-Ups": [
+      1,
+      2,
+      4,
+      6,
+      9,
+      10,
+      11,
+      17
+    ],
+    "Raised_leg_circles": [
+      9,
+      10,
+      12,
+      13,
+      17
+    ],
+    "Raised_leg_hold": [
+      9,
+      10,
+      13,
+      17
+    ],
+    "Reverse_Angels": [
+      2,
+      6,
+      11
+    ],
+    "Reverse_Crunches": [
+      8,
+      9,
+      10,
+      13
+    ],
+    "Reverse_Grip_Push-Ups": [
+      1,
+      3,
+      4,
+      6,
+      9,
+      10,
+      11
+    ],
+    "Reverse_Lunges": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      17
+    ],
+    "Reverse_Plank_Kicks": [
+      1,
+      2,
+      4,
+      11,
+      12,
+      17
+    ],
+    "Running": [
+      8,
+      11,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Scissors": [
+      9,
+      10,
+      12,
+      13
+    ],
+    "Seagulls": [
+      2,
+      6,
+      11
+    ],
+    "Seal_Jacks": [
+      2,
+      9,
+      10,
+      13,
+      14,
+      15,
+      17,
+      18
+    ],
+    "Shoulder_taps": [
+      1,
+      2,
+      4,
+      9,
+      10
+    ],
+    "Shuffle_Wood_Chops": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      17
+    ],
+    "Side-to-Side_Lunges": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "Side_Elbow_Plank": [
+      2,
+      8,
+      9,
+      10,
+      11
+    ],
+    "Side_Plank_Leg_Lift": [
+      2,
+      8,
+      9,
+      10,
+      11,
+      15,
+      16
+    ],
+    "Side_leg_raises": [
+      15,
+      16,
+      17
+    ],
+    "Side_plank_knee_taps": [
+      8,
+      9,
+      10,
+      11,
+      15
+    ],
+    "Side_splits": [
+      12,
+      15,
+      16,
+      17
+    ],
+    "Single_Arm_Plank_Jump-Ins": [
+      1,
+      2,
+      4,
+      9,
+      10,
+      11,
+      13,
+      17
+    ],
+    "Single_Leg_hop_on_spot": [
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Single_leg_bridges": [
+      9,
+      10,
+      11,
+      12,
+      17
+    ],
+    "Single_leg_dead_lifts": [
+      11,
+      12,
+      17
+    ],
+    "Sit-Up_Punches": [
+      2,
+      5,
+      8,
+      9,
+      10,
+      19
+    ],
+    "Sit-ups": [
+      8,
+      9,
+      10,
+      13
+    ],
+    "Sitting_Punches": [
+      2,
+      3,
+      5,
+      8,
+      19
+    ],
+    "Sitting_Twists": [
+      8,
+      9,
+      10
+    ],
+    "Skiers": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Sky_Diver_Push-Ups": [
+      1,
+      2,
+      4,
+      6,
+      9,
+      10,
+      11
+    ],
+    "Squat_Hold": [
+      11,
+      12,
+      13,
+      15,
+      17
+    ],
+    "Squat_Hold_Side_Bends": [
+      8,
+      11,
+      12,
+      13,
+      15,
+      17
+    ],
+    "Squat_hold_calf_raises": [
+      11,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Squat_hops": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Standing_Cable_Lateral_Raise": [
+      2,
+      6
+    ],
+    "Standing_Front_Raise": [
+      2,
+      6
+    ],
+    "Standing_Shoulder_Taps": [
+      2,
+      4,
+      6
+    ],
+    "StarJump": [
+      2,
+      9,
+      10,
+      13,
+      14,
+      15,
+      17,
+      18
+    ],
+    "Superman_Extensions": [
+      6,
+      11,
+      12,
+      17
+    ],
+    "Swimming": [
+      2,
+      6,
+      7,
+      11,
+      12
+    ],
+    "Thigh_taps": [
+      9,
+      10,
+      13
+    ],
+    "Toe_Taps_Hop": [
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Tree_pose": [
+      11,
+      13,
+      14,
+      15,
+      17,
+      18
+    ],
+    "Tricep_Dip_Hold": [
+      1,
+      2,
+      4,
+      6,
+      10
+    ],
+    "Turning_Kicks": [
+      8,
+      11,
+      13,
+      14,
+      15,
+      17,
+      18
+    ],
+    "Up_and_down_plancks": [
+      1,
+      2,
+      4,
+      8,
+      9,
+      10
+    ],
+    "V-ups": [
+      8,
+      9,
+      10,
+      12,
+      13
+    ],
+    "W-Arm_Extensions": [
+      2,
+      6,
+      11
+    ],
+    "Walking": [
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "Wall-Sit": [
+      11,
+      12,
+      13,
+      15,
+      17
+    ],
+    "Windshield_wipers": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "hops_on_the_spot": [
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "jumping_TS": [
+      2,
+      9,
+      10,
+      13,
+      14,
+      17,
+      18
+    ],
+    "knee_to_elbow_crunches": [
+      8,
+      9,
+      10,
+      13
+    ],
+    "plank_walk_outs": [
+      1,
+      2,
+      4,
+      9,
+      10,
+      11
+    ],
+    "pushup_with_rotations": [
+      1,
+      2,
+      4,
+      8,
+      9,
+      10,
+      11
+    ],
+    "raised_arm_circles": [
+      2,
+      6
+    ],
+    "side-to-side_chops": [
+      8,
+      9,
+      10,
+      11,
+      13,
+      17
+    ],
+    "side_bridges": [
+      8,
+      9,
+      10,
+      11,
+      15,
+      16
+    ],
+    "side_plank_rotation": [
+      2,
+      8,
+      9,
+      10,
+      11
+    ],
+    "squat_hold_punches": [
+      2,
+      5,
+      11,
+      12,
+      13,
+      17,
+      19
+    ],
+    "star_plank": [
+      1,
+      2,
+      4,
+      8,
+      9,
+      10,
+      11,
+      15
+    ],
+    "sumo_squat_calf_raise": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    "uneven_plank": [
+      1,
+      2,
+      4,
+      8,
+      9,
+      10,
+      11
+    ]
   }
 }
