@@ -112,3 +112,15 @@ if __name__ == "__main__":
               f"（最深部: {r['bottom']}フレーム, {r['min_angle']}°, prominence={r['prominence']}）")
 
     visualize_reps(angles, reps, OUTPUT_IMG)
+
+    # reps.csv に書き出す（muscle_activation.py が読み込む）
+    import csv, pathlib
+    REPS_CSV = "data/processed/reps.csv"
+    with open(REPS_CSV, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["rep","start_frame","end_frame","bottom_frame","min_angle","prominence"])
+        w.writeheader()
+        for r in reps:
+            w.writerow({"rep": r["rep"], "start_frame": r["start"],
+                        "end_frame": r["end"], "bottom_frame": r["bottom"],
+                        "min_angle": r["min_angle"], "prominence": r["prominence"]})
+    print(f"保存: {REPS_CSV}")

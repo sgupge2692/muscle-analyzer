@@ -1,0 +1,16 @@
+{
+  "rep_1": {
+    "Lower_Back": 0.0244,
+    "Hamstring": 0.4121,
+    "Quadriceps": 0.139,
+    "Inner_Thigh": 0.2825,
+    "Gluteus": 0.1682
+  },
+  "rep_2": {
+    "Lower_Back": 0.1376,
+    "Hamstring": 0.4479,
+    "Quadriceps": 0.3316,
+    "Inner_Thigh": 0.3176,
+    "Gluteus": 0.4546
+  }
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><title>スクワット rep_1 筋肉活動</title>
+<style>
+  body{font-family:sans-serif;background:#1a1a2e;color:#eee;display:flex;gap:40px;padding:40px;align-items:flex-start}
+  h2{color:#a0cfff;margin:0 0 12px}
+  .leg{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:14px}
+  .dot{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+  .muscle{transition:opacity .2s;cursor:pointer}
+  .muscle:hover{opacity:.6}
+  #tip{position:fixed;top:16px;right:16px;background:rgba(0,0,0,.85);
+        color:#fff;padding:8px 14px;border-radius:8px;display:none;font-size:13px}
+  .grad{width:160px;height:16px;border-radius:4px;
+         background:linear-gradient(to right,#0055ff,#ffff00,#ff2200);margin-top:16px}
+  .grad-label{display:flex;justify-content:space-between;font-size:11px;color:#aaa}
+</style></head><body>
+<div>
+  <h2>スクワット rep_1 筋肉活動</h2>
+  <svg viewBox="0 0 200 420" xmlns="http://www.w3.org/2000/svg" width="280" height="588"
+       style="background:#2a2a3e;border-radius:12px">
+    
+  <ellipse cx="100" cy="45" rx="28" ry="32" fill="#ddd" stroke="#aaa" stroke-width="1.5"/>
+  <rect x="90" y="74" width="20" height="18" rx="4" fill="#ddd" stroke="#aaa" stroke-width="1"/>
+  <path d="M60,90 L55,185 L65,232 L135,232 L145,185 L140,90 Z" fill="#ddd" stroke="#aaa" stroke-width="1.5"/>
+  <path d="M60,95 L38,165 L42,235" fill="none" stroke="#ddd" stroke-width="18" stroke-linecap="round"/>
+  <path d="M140,95 L162,165 L158,235" fill="none" stroke="#ddd" stroke-width="18" stroke-linecap="round"/>
+  <path d="M75,230 L68,325 L72,395" fill="none" stroke="#ddd" stroke-width="36" stroke-linecap="round"/>
+  <path d="M125,230 L132,325 L128,395" fill="none" stroke="#ddd" stroke-width="36" stroke-linecap="round"/>
+
+    <ellipse cx="75" cy="275" rx="18" ry="38" id="ham_l" fill="#24f26c" class="muscle" data-name="Hamstring" data-val="0.412" opacity="0.6"/><ellipse cx="125" cy="275" rx="18" ry="38" id="ham_r" fill="#24f26c" class="muscle" data-name="Hamstring" data-val="0.412" opacity="0.6"/>
+<ellipse cx="90" cy="265" rx="10" ry="35" id="ith_l" fill="#24f2d7" class="muscle" data-name="Inner_Thigh" data-val="0.282" opacity="0.7"/><ellipse cx="110" cy="265" rx="10" ry="35" id="ith_r" fill="#24f2d7" class="muscle" data-name="Inner_Thigh" data-val="0.282" opacity="0.7"/>
+<ellipse cx="75" cy="205" rx="28" ry="22" id="glute_l" fill="#24aef2" class="muscle" data-name="Gluteus" data-val="0.168"/><ellipse cx="125" cy="205" rx="28" ry="22" id="glute_r" fill="#24aef2" class="muscle" data-name="Gluteus" data-val="0.168"/>
+<ellipse cx="75" cy="270" rx="22" ry="45" id="quad_l" fill="#2496f2" class="muscle" data-name="Quadriceps" data-val="0.139"/><ellipse cx="125" cy="270" rx="22" ry="45" id="quad_r" fill="#2496f2" class="muscle" data-name="Quadriceps" data-val="0.139"/>
+<rect x="82" y="155" width="10" height="35" rx="5" id="lback_l" fill="#2438f2" class="muscle" data-name="Lower_Back" data-val="0.024"/><rect x="108" y="155" width="10" height="35" rx="5" id="lback_r" fill="#2438f2" class="muscle" data-name="Lower_Back" data-val="0.024"/>
+
+  </svg>
+</div>
+<div>
+  <h2>活動強度</h2>
+  <div class="leg"><span class="dot" style="background:#24f26c"></span>Hamstring: 41.2%</div>
+<div class="leg"><span class="dot" style="background:#24f2d7"></span>Inner_Thigh: 28.2%</div>
+<div class="leg"><span class="dot" style="background:#24aef2"></span>Gluteus: 16.8%</div>
+<div class="leg"><span class="dot" style="background:#2496f2"></span>Quadriceps: 13.9%</div>
+<div class="leg"><span class="dot" style="background:#2438f2"></span>Lower_Back: 2.4%</div>
+
+  <div class="grad"></div>
+  <div class="grad-label"><span>低</span><span>高</span></div>
+  <p style="margin-top:20px;font-size:11px;color:#888">※ルールベース推定値</p>
+</div>
+<div id="tip"></div>
+<script>
+document.querySelectorAll('.muscle').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{
+    const t=document.getElementById('tip');
+    t.textContent=el.dataset.name+': '+(parseFloat(el.dataset.val)*100).toFixed(1)+'%';
+    t.style.display='block';
+  });
+  el.addEventListener('mouseleave',()=>document.getElementById('tip').style.display='none');
+});
+</script>
+</body></html>
