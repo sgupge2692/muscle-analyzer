@@ -39,35 +39,29 @@ async def analyze(
         raise HTTPException(400, f"未対応の種目: {exercise}")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # 動画を一時保存
         tmp_video = Path(tmpdir) / file.filename
         with open(tmp_video, "wb") as f:
             shutil.copyfileobj(file.file, f)
 
-        # ランドマーク抽出
         landmarks_csv = Path(tmpdir) / "landmarks.csv"
         try:
             extract_landmarks(str(tmp_video), str(landmarks_csv))
         except Exception as e:
             raise HTTPException(500, f"ランドマーク抽出失敗: {e}")
 
-        # 角度特徴量
         try:
             features = compute_angle_features(str(landmarks_csv))
         except Exception as e:
             raise HTTPException(500, f"角度計算失敗: {e}")
 
-        # レップ検出
         angles = load_knee_angles(str(landmarks_csv))
         reps   = detect_reps(angles)
 
-        # 筋肉活動推定
         muscle_ids     = MAPPING["exercise_muscle_mapping"][exercise]
         muscle_groups  = MAPPING["muscle_groups"]
         active_muscles = [muscle_groups[str(i)] for i in muscle_ids]
         activations    = estimate_activation(features, active_muscles)
 
-        # レップ別集計
         rep_data = {}
         if reps:
             for r in reps:
