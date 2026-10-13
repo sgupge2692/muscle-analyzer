@@ -1,22 +1,25 @@
-.venv/
-__pycache__/
-*.pyc
-.DS_Store
-.env
-*.ipynb_checkpoints
-*.mp4
-*.task
-data/raw/
-# データセット（大容量・ライセンス制限）
-data/raw/
-data/processed/*.pkl
-data/processed/*.mp4
+# MuscleMap（EULA：学術研究限定・再配布禁止）
+backend/data/raw/MuscleMap/
+backend/data/raw/musclemap_benchmark/
 
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
+# 動画ファイル
+*.mp4
+*.mov
+*.avi
+
+# 大きなデータファイル
+backend/data/processed/squat_landmarks.csv
+backend/data/processed/angle_features.csv
+backend/data/processed/musclemap_squat_index.csv
+
+# 仮想環境
+backend/.venv/
+.venv/
 
 # Python
 __pycache__/
 *.pyc
-.venv/
+*.pkl
+
+# OS
+.DS_Store
