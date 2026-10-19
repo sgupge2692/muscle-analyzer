@@ -32,3 +32,4 @@ backend/.env
 
 # Node
 node_modules/
+backend/output/
