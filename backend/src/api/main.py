@@ -10,8 +10,9 @@ from pose.extract_landmarks import extract_landmarks
 from anatomy.angle_features import compute_angle_features
 from anatomy.rep_detector import load_knee_angles, detect_reps
 from anatomy.muscle_activation import estimate_activation
+from anatomy.form_checker import check_form
 
-app = FastAPI(title="Muscle Analyzer API", version="0.2.0")
+app = FastAPI(title="Muscle Analyzer API", version="0.3.0")
 
 _origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
 origins = [o.strip() for o in _origins_env.split(",")]
@@ -40,46 +41,53 @@ except Exception as e:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "ml_available": _ml_available}
+    return {
+        "status": "ok",
+        "ml_available": _ml_available,
+        "api_version": "0.3.0",
+        "supported_exercises": list(MAPPING["exercise_muscle_mapping"].keys()),
+    }
 
 
 @app.post("/analyze")
 async def analyze(
     file: UploadFile = File(...),
-    exercise: str = "Squat_Hold",
+    exercise: str = "Squats",
     target_angle: float = 110.0,
     ml_mode: bool = False,
 ):
     if exercise not in MAPPING["exercise_muscle_mapping"]:
-        raise HTTPException(400, f"未対応の種目: {exercise}")
+        raise HTTPException(400, f"未対応の種目: {exercise}. サポート種目: {list(MAPPING['exercise_muscle_mapping'].keys())[:10]}...")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_video = Path(tmpdir) / file.filename
         with open(tmp_video, "wb") as f:
             shutil.copyfileobj(file.file, f)
 
+        # 1. 骨格検出
         landmarks_csv = Path(tmpdir) / "landmarks.csv"
         try:
             extract_landmarks(str(tmp_video), str(landmarks_csv))
         except Exception as e:
             raise HTTPException(500, f"ランドマーク抽出失敗: {e}")
 
+        # 2. 関節角度計算
         try:
             features = compute_angle_features(str(landmarks_csv))
         except Exception as e:
             raise HTTPException(500, f"角度計算失敗: {e}")
 
+        # 3. レップ検出
         angles = load_knee_angles(str(landmarks_csv))
         reps   = detect_reps(angles, target_angle=target_angle)
 
+        # 4. 筋肉活動推定（ルールベース）
         muscle_ids     = MAPPING["exercise_muscle_mapping"][exercise]
         muscle_groups  = MAPPING["muscle_groups"]
         active_muscles = [muscle_groups[str(i)] for i in muscle_ids]
+        activations    = estimate_activation(features, active_muscles)
 
-        # ルールベース推定
-        activations = estimate_activation(features, active_muscles)
-
-        # MLモード：モデルが使える場合のみ
+        # 5. MLモード
         ml_scores = None
         if ml_mode and _ml_available:
             try:
@@ -87,8 +95,10 @@ async def analyze(
             except Exception as e:
                 print(f"ML推論失敗: {e}")
 
-        # レップごとの集計
+        # 6. レップごとの集計 + フォーム診断
         rep_data = {}
+        form_feedback = {}
+
         if reps:
             for r in reps:
                 key  = f"rep_{r['rep']}"
@@ -98,16 +108,25 @@ async def analyze(
                     col: round(float(sl[col].mean()), 4)
                     for col in sl.columns
                 }
+                # フォーム診断（レップごと）
+                issues = check_form(features, exercise, r["start"], r["end"])
+                if issues:
+                    form_feedback[key] = issues
         else:
             rep_data["rep_1"] = {
                 col: round(float(activations[col].mean()), 4)
                 for col in activations.columns
             }
+            # フォーム診断（全体）
+            issues = check_form(features, exercise)
+            if issues:
+                form_feedback["rep_1"] = issues
 
     response = {
         "exercise": exercise,
         "total_reps": len(rep_data),
         "activations": rep_data,
+        "form_feedback": form_feedback,    # ← 新規追加
         "ml_available": _ml_available,
     }
     if ml_scores is not None:
