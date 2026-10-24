@@ -79,7 +79,7 @@ async def analyze(
 
         # 3. レップ検出
         angles = load_knee_angles(str(landmarks_csv))
-        reps   = detect_reps(angles, target_angle=target_angle)
+        reps   = detect_reps(angles, angle_min=target_angle - 40, angle_max=target_angle + 40)
 
         # 4. 筋肉活動推定（ルールベース）
         muscle_ids     = MAPPING["exercise_muscle_mapping"][exercise]
