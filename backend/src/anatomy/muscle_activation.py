@@ -19,8 +19,7 @@ MUSCLE_JOINT_MAP = {
     # 下腿三頭筋：足首角度が小さいほど伸張
     "Calves":      [("right_ankle",   "small"), ("left_ankle",   "small")],
     # 内転筋：股関節屈曲と膝内側化で活動
-    "Inner_Thigh": [("knee_asymmetry","large"),
-                    ("right_hip",     "small"), ("left_hip",     "small")],
+    "Inner_Thigh": [("knee_asymmetry","large")],
     "Outer_Thigh": [("knee_asymmetry","small")],
     # ── 上半身 Push ─────────────────────────────────────────────
     "Chest":       [("right_elbow",   "small"), ("left_elbow",   "small")],
