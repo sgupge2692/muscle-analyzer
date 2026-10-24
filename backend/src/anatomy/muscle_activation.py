@@ -56,6 +56,7 @@ def estimate_activation(angle_features: pd.DataFrame,
 
             # 0〜1に正規化
             mn, mx = series.min(), series.max()
+            #ゼロ除算
             if mx - mn < 1e-6:
                 normalized = pd.Series(0.5, index=series.index)
             else:
@@ -81,7 +82,7 @@ def estimate_activation(angle_features: pd.DataFrame,
         if joint_scores:
             # 複数関節の平均
             activations[muscle] = pd.concat(joint_scores, axis=1).mean(axis=1)
-
+    #.DataFrameは辞書や表データをきれいな表形式に変換する機能
     return pd.DataFrame(activations)
 
 def visualize_activation(activations: pd.DataFrame,
@@ -97,7 +98,7 @@ def visualize_activation(activations: pd.DataFrame,
 
     ax.set_xlabel('フレーム')
     ax.set_ylabel('活動強度（0〜1）')
-    ax.set_title(f'{exercise}　筋肉活動強度推定')
+    ax.set_title(f'{exercise}筋肉活動強度推定')
     ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=8)
     ax.set_ylim(0, 1)
     plt.tight_layout()
