@@ -43,34 +43,104 @@ MUSCLE_JOINT_MAP = {
     "Wrists":      [("right_elbow",   "small"), ("left_elbow",   "small")],
 }
 
+# 種目ごとの筋肉活動基準重み（バイオメカニクス先行研究に基づく）
+# 値は相対的な活動強度の比率（合計1.0になるよう正規化して使う）
+# 参考: Escamilla 2001, Contreras 2015, Saeterbakken 2013
+EXERCISE_BASE_WEIGHTS: dict[str, dict[str, float]] = {
+    "Squats": {
+        "Quadriceps": 0.35,
+        "Gluteus":    0.25,
+        "Hamstring":  0.18,
+        "Lower_Back": 0.10,
+        "Calves":     0.07,
+        "Inner_Thigh":0.05,
+    },
+    "Deadlift": {
+        "Gluteus":    0.30,
+        "Hamstring":  0.28,
+        "Lower_Back": 0.22,
+        "Latissimus": 0.10,
+        "Upper_Back": 0.10,
+    },
+    "Romanian_Deadlift": {
+        "Hamstring":  0.40,
+        "Gluteus":    0.35,
+        "Lower_Back": 0.25,
+    },
+    "Lunges": {
+        "Quadriceps": 0.35,
+        "Gluteus":    0.28,
+        "Hamstring":  0.20,
+        "Calves":     0.10,
+        "Inner_Thigh":0.07,
+    },
+    "Push_ups": {
+        "Chest":      0.40,
+        "Triceps":    0.30,
+        "Shoulder":   0.20,
+        "Lower_Back": 0.10,
+    },
+    "Bench_Press": {
+        "Chest":      0.45,
+        "Triceps":    0.30,
+        "Shoulder":   0.25,
+    },
+}
+
 def estimate_activation(angle_features: pd.DataFrame,
                         active_muscles: list,
+                        exercise: str = "",
                         window: int = 15) -> pd.DataFrame:
     """
-    関節角度から筋肉活動強度（0〜1）を推定
+    筋肉活動強度を推定。
+    
+    2段階アプローチ:
+    1. 種目の基準重みがあればそれをベースに使う（バイオメカニクス的に正確）
+    2. ない場合は関節角度の変化量（velocity）で動的に推定する
 
     active_muscles: muscle_mapping.jsonから取得した筋群名リスト
-    戻り値: フレームごとの各筋肉の活動強度DataFrame
+    exercise: 種目名（基準重みの参照に使用）
     """
+    n_frames = len(angle_features)
     activations = {}
 
+    # --- ステップ1: 基準重みが定義されている種目はそれを使う ---
+    base_weights = EXERCISE_BASE_WEIGHTS.get(exercise, {})
+    
+    if base_weights:
+        # 対象筋群のうち基準重みがあるものを抽出
+        target_weights = {m: base_weights[m] for m in active_muscles if m in base_weights}
+        
+        if target_weights:
+            # 基準重みを正規化（合計1.0）
+            total = sum(target_weights.values())
+            normalized_weights = {m: w / total for m, w in target_weights.items()}
+            
+            for muscle, base_w in normalized_weights.items():
+                # 動的な変調：関節角度の変化率でベース重みを±20%変調
+                dynamic_mod = _compute_dynamic_modifier(angle_features, muscle, window)
+                # ベース重み × 動的変調（0.8〜1.2の範囲）
+                raw = base_w * (0.8 + 0.4 * dynamic_mod)
+                activations[muscle] = pd.Series(raw, index=angle_features.index)
+            
+            # 基準重みにない筋肉は動的推定で補完
+            remaining = [m for m in active_muscles if m not in target_weights]
+            for muscle in remaining:
+                dynamic_mod = _compute_dynamic_modifier(angle_features, muscle, window)
+                # 残りの筋肉は小さいスコアで追加（最大10%）
+                activations[muscle] = pd.Series(0.05 * dynamic_mod, index=angle_features.index)
+            
+            return pd.DataFrame(activations)
+
+    # --- ステップ2: フォールバック（旧来の関節角度ベース推定）---
     for muscle in active_muscles:
         if muscle not in MUSCLE_JOINT_MAP:
             continue
-
         joint_scores = []
         for joint_col, direction in MUSCLE_JOINT_MAP[muscle]:
             if joint_col not in angle_features.columns:
                 continue
-
-            series = angle_features[joint_col].copy()
-
-            # NaNを補完
-            series = series.ffill().bfill()
-
-            # 0〜1に正規化
-            # asymmetryカラムは絶対値を使い、閾値(15°)でクランプ
-            # （左右差が小さい場合に過剰スコアにならないよう）
+            series = angle_features[joint_col].copy().ffill().bfill()
             if 'asymmetry' in joint_col:
                 series = series.abs()
                 normalized = (series / 15.0).clip(0.0, 1.0)
@@ -80,29 +150,38 @@ def estimate_activation(angle_features: pd.DataFrame,
                     normalized = pd.Series(0.5, index=series.index)
                 else:
                     normalized = (series - mn) / (mx - mn)
-
-            # 方向に応じて反転
-            # small = 角度が小さいほど収縮強度が高い
-            # large = 角度が大きいほど収縮強度が高い
-            if direction == "small":
-                score = 1.0 - normalized
-            else:
-                score = normalized
-
-            # 速度成分を加味（速く動くほど強度UP）
+            score = (1.0 - normalized) if direction == "small" else normalized
             vel_col = f'{joint_col}_vel'
             if vel_col in angle_features.columns:
                 vel = angle_features[vel_col].abs().ffill().bfill()
                 vel_norm = vel / (vel.max() + 1e-8)
                 score = score * 0.8 + vel_norm * 0.2
-
             joint_scores.append(score)
-
         if joint_scores:
-            # 複数関節の平均
             activations[muscle] = pd.concat(joint_scores, axis=1).mean(axis=1)
-    #.DataFrameは辞書や表データをきれいな表形式に変換する機能
+
     return pd.DataFrame(activations)
+
+
+def _compute_dynamic_modifier(features: pd.DataFrame, muscle: str, window: int) -> pd.Series:
+    """
+    関節角度の変化速度から動的な活動変調係数（0〜1）を計算
+    """
+    if muscle not in MUSCLE_JOINT_MAP:
+        return pd.Series(0.5, index=features.index)
+    
+    scores = []
+    for joint_col, _ in MUSCLE_JOINT_MAP[muscle]:
+        vel_col = f'{joint_col}_vel'
+        if vel_col in features.columns:
+            vel = features[vel_col].abs().ffill().bfill()
+            vel_norm = (vel / (vel.max() + 1e-8)).rolling(window, center=True, min_periods=1).mean()
+            scores.append(vel_norm)
+    
+    if not scores:
+        return pd.Series(0.5, index=features.index)
+    return pd.concat(scores, axis=1).mean(axis=1).clip(0, 1)
+
 
 def visualize_activation(activations: pd.DataFrame,
                          exercise: str,

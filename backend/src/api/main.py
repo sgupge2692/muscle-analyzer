@@ -85,7 +85,7 @@ async def analyze(
         muscle_ids     = MAPPING["exercise_muscle_mapping"][exercise]
         muscle_groups  = MAPPING["muscle_groups"]
         active_muscles = [muscle_groups[str(i)] for i in muscle_ids]
-        activations    = estimate_activation(features, active_muscles)
+        activations    = estimate_activation(features, active_muscles, exercise=exercise)
 
         # 5. MLモード
         ml_scores = None
