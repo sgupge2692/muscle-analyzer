@@ -33,3 +33,5 @@ backend/.env
 # Node
 node_modules/
 backend/output/
+
+# frontendを追跡対象に
