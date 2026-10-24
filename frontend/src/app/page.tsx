@@ -19,6 +19,16 @@ const PROGRESS_STEPS = [
 
 const TECH_STACK = ["MediaPipe", "FastAPI", "NumPy", "scikit-learn"];
 
+const EXERCISE_OPTIONS = [
+  { value: "Squats",             label: "スクワット" },
+  { value: "Deadlift",           label: "デッドリフト" },
+  { value: "Romanian_Deadlift",  label: "ルーマニアンDL" },
+  { value: "Lunges",             label: "ランジ" },
+  { value: "Push_ups",           label: "プッシュアップ" },
+  { value: "Bench_Press",        label: "ベンチプレス" },
+  { value: "Squat_Hold",         label: "スクワットホールド" },
+];
+
 export default function Home() {
   const [file, setFile]           = useState<File | null>(null);
   const [loading, setLoading]     = useState(false);
@@ -30,6 +40,7 @@ export default function Home() {
   const [dragOver, setDragOver]   = useState(false);
   const [targetAngle, setTargetAngle]   = useState(110);
   const [declaredReps, setDeclaredReps] = useState<number | null>(null);
+  const [exercise, setExercise]         = useState("Squats");
   const timerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   function startFakeProgress() {
@@ -57,7 +68,7 @@ export default function Home() {
     setPct(0);
     startFakeProgress();
     try {
-      const data = await analyzeVideo(target, "Squat_Hold", targetAngle);
+      const data = await analyzeVideo(target, exercise, targetAngle);
       clearFakeProgress();
       setPct(100);
       setStepLabel("解析完了");
@@ -125,6 +136,27 @@ export default function Home() {
             {/* 設定パネル */}
             <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-6">
               <p className="text-[11px] font-bold tracking-[0.25em] text-[#666666] mb-5">ANALYSIS SETTINGS</p>
+
+              {/* 種目選択 */}
+              <div className="mb-6">
+                <span className="text-xs text-[#555] block mb-3">種目</span>
+                <div className="flex flex-wrap gap-2">
+                  {EXERCISE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setExercise(opt.value)}
+                      className={`text-[11px] px-3 py-1.5 rounded-xl border transition-all
+                        ${exercise === opt.value
+                          ? "bg-red-600/20 border-red-600/50 text-red-400"
+                          : "bg-transparent border-[#1a1a1a] text-[#555] hover:border-[#2a2a2a] hover:text-[#888]"
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="mb-6">
                 <div className="flex justify-between items-baseline mb-3">
                   <span className="text-xs text-[#555]">目標スクワット深度（膝角度）</span>
