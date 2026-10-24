@@ -69,12 +69,17 @@ def estimate_activation(angle_features: pd.DataFrame,
             series = series.ffill().bfill()
 
             # 0〜1に正規化
-            mn, mx = series.min(), series.max()
-            #ゼロ除算
-            if mx - mn < 1e-6:
-                normalized = pd.Series(0.5, index=series.index)
+            # asymmetryカラムは絶対値を使い、閾値(15°)でクランプ
+            # （左右差が小さい場合に過剰スコアにならないよう）
+            if 'asymmetry' in joint_col:
+                series = series.abs()
+                normalized = (series / 15.0).clip(0.0, 1.0)
             else:
-                normalized = (series - mn) / (mx - mn)
+                mn, mx = series.min(), series.max()
+                if mx - mn < 1e-6:
+                    normalized = pd.Series(0.5, index=series.index)
+                else:
+                    normalized = (series - mn) / (mx - mn)
 
             # 方向に応じて反転
             # small = 角度が小さいほど収縮強度が高い
