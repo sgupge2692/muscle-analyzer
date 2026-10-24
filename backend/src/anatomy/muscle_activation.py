@@ -7,23 +7,38 @@ matplotlib.rcParams['font.family'] = 'Hiragino Sans'
 
 # 筋群ごとの「関連関節」と「角度が小さいほど収縮か大きいほど収縮か」の定義
 MUSCLE_JOINT_MAP = {
+    # ── 下半身 ──────────────────────────────────────────────────
+    # 大腿四頭筋：膝屈曲（小さい角度）で伸張・収縮負荷が高い
     "Quadriceps":  [("right_knee",    "small"), ("left_knee",    "small")],
-    "Hamstring":   [("right_knee",    "large"), ("right_hip",    "small")],
+    # ハムストリング：股関節屈曲（小さい角度）で伸張。左右両側を使う
+    "Hamstring":   [("right_hip",     "small"), ("left_hip",     "small")],
+    # 大臀筋：股関節屈曲（小さい角度）で伸張→収縮力が高い
     "Gluteus":     [("right_hip",     "small"), ("left_hip",     "small")],
+    # 脊柱起立筋：体幹前傾（大きい角度）で等尺性収縮
     "Lower_Back":  [("spine_tilt",    "large")],
+    # 下腿三頭筋：足首角度が小さいほど伸張
     "Calves":      [("right_ankle",   "small"), ("left_ankle",   "small")],
-    "Inner_Thigh": [("knee_asymmetry","large")],
+    # 内転筋：股関節屈曲と膝内側化で活動
+    "Inner_Thigh": [("knee_asymmetry","large"),
+                    ("right_hip",     "small"), ("left_hip",     "small")],
     "Outer_Thigh": [("knee_asymmetry","small")],
+    # ── 上半身 Push ─────────────────────────────────────────────
     "Chest":       [("right_elbow",   "small"), ("left_elbow",   "small")],
     "Shoulder":    [("right_shoulder","small"), ("left_shoulder","small")],
-    "Triceps":     [("right_elbow",   "small"), ("left_elbow",   "small")],
-    "Biceps":      [("right_elbow",   "large"), ("left_elbow",   "large")],
+    # 上腕三頭筋：肘伸展（大きい角度）で収縮
+    "Triceps":     [("right_elbow",   "large"), ("left_elbow",   "large")],
+    # ── 上半身 Pull ─────────────────────────────────────────────
+    # 上腕二頭筋：肘屈曲（小さい角度）で収縮
+    "Biceps":      [("right_elbow",   "small"), ("left_elbow",   "small")],
     "Upper_Back":  [("right_shoulder","large"), ("left_shoulder","large")],
     "Latissimus":  [("right_shoulder","large"), ("left_shoulder","large")],
+    # ── 体幹 ────────────────────────────────────────────────────
     "Obliques":    [("spine_tilt",    "large"), ("hip_asymmetry","large")],
     "Upper_Abs":   [("right_hip",     "small"), ("left_hip",     "small")],
     "Lower_Abs":   [("right_hip",     "small"), ("left_hip",     "small")],
+    # ── その他 ──────────────────────────────────────────────────
     "Forearms":    [("right_elbow",   "small"), ("left_elbow",   "small")],
+    "Neck_Head_reserved": [("spine_tilt", "large")],
     "Neck_Head":   [("spine_tilt",    "large")],
     "Feet_Ankles": [("right_ankle",   "small"), ("left_ankle",   "small")],
     "Wrists":      [("right_elbow",   "small"), ("left_elbow",   "small")],
