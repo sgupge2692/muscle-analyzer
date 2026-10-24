@@ -6,6 +6,7 @@ import { analyzeVideo } from "@/lib/api";
 import { MuscleHeatmap } from "@/components/MuscleHeatmap";
 import { RepCard } from "@/components/RepCard";
 import { RepAlert } from "@/components/RepAlert";
+import { FormFeedbackCard } from "@/components/FormFeedbackCard";
 
 const PROGRESS_STEPS = [
   { pct: 10, label: "動画を受信中..." },
@@ -307,6 +308,17 @@ export default function Home() {
                 repKey={repKeys[activeRep]}
                 act={result.activations[repKeys[activeRep]]}
               />
+            )}
+
+            {/* フォーム診断 */}
+            {repKeys[activeRep] && (
+              <div className="mt-6">
+                <FormFeedbackCard
+                  key={`form-${repKeys[activeRep]}`}
+                  repKey={repKeys[activeRep]}
+                  issues={result.form_feedback?.[repKeys[activeRep]] ?? []}
+                />
+              </div>
             )}
           </div>
         </section>
