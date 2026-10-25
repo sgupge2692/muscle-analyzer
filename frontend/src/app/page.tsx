@@ -3,41 +3,37 @@
 import { useState, useRef } from "react";
 import { AnalyzeResult } from "@/types/analysis";
 import { analyzeVideo } from "@/lib/api";
-import { MuscleHeatmap } from "@/components/MuscleHeatmap";
-import { RepCard } from "@/components/RepCard";
-import { RepAlert } from "@/components/RepAlert";
-import { FormFeedbackCard } from "@/components/FormFeedbackCard";
+import { ResultPanel } from "@/components/ResultPanel";
 
 const PROGRESS_STEPS = [
-  { pct: 10, label: "動画を受信中..." },
-  { pct: 25, label: "骨格を検出中..." },
-  { pct: 55, label: "関節角度を計算中..." },
-  { pct: 70, label: "レップを検出中..." },
-  { pct: 85, label: "筋肉活動を推定中..." },
-  { pct: 95, label: "結果をまとめています..." },
+  { pct: 10,  label: "動画を受信中..." },
+  { pct: 25,  label: "骨格を検出中..." },
+  { pct: 55,  label: "関節角度を計算中..." },
+  { pct: 70,  label: "レップを検出中..." },
+  { pct: 85,  label: "筋肉活動を推定中..." },
+  { pct: 95,  label: "結果をまとめています..." },
 ];
 
 const TECH_STACK = ["MediaPipe", "FastAPI", "NumPy", "scikit-learn"];
 
 const EXERCISE_OPTIONS = [
-  { value: "Squats",             label: "スクワット" },
-  { value: "Deadlift",           label: "デッドリフト" },
-  { value: "Romanian_Deadlift",  label: "ルーマニアンDL" },
-  { value: "Lunges",             label: "ランジ" },
-  { value: "Push_ups",           label: "プッシュアップ" },
-  { value: "Bench_Press",        label: "ベンチプレス" },
-  { value: "Squat_Hold",         label: "スクワットホールド" },
+  { value: "Squats",            label: "スクワット" },
+  { value: "Deadlift",          label: "デッドリフト" },
+  { value: "Romanian_Deadlift", label: "ルーマニアンDL" },
+  { value: "Lunges",            label: "ランジ" },
+  { value: "Push_ups",          label: "プッシュアップ" },
+  { value: "Bench_Press",       label: "ベンチプレス" },
+  { value: "Squat_Hold",        label: "スクワットホールド" },
 ];
 
 export default function Home() {
-  const [file, setFile]           = useState<File | null>(null);
-  const [loading, setLoading]     = useState(false);
-  const [pct, setPct]             = useState(0);
+  const [file, setFile]         = useState<File | null>(null);
+  const [loading, setLoading]   = useState(false);
+  const [pct, setPct]           = useState(0);
   const [stepLabel, setStepLabel] = useState("");
-  const [result, setResult]       = useState<AnalyzeResult | null>(null);
-  const [activeRep, setActiveRep] = useState(0);
-  const [error, setError]         = useState<string | null>(null);
-  const [dragOver, setDragOver]   = useState(false);
+  const [result, setResult]     = useState<AnalyzeResult | null>(null);
+  const [error, setError]       = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [targetAngle, setTargetAngle]   = useState(110);
   const [declaredReps, setDeclaredReps] = useState<number | null>(null);
   const [exercise, setExercise]         = useState("Squats");
@@ -64,7 +60,6 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setResult(null);
-    setActiveRep(0);
     setPct(0);
     startFakeProgress();
     try {
@@ -88,11 +83,20 @@ export default function Home() {
     if (f) { setFile(f); handleSubmit(f); }
   }
 
-  const repKeys = result ? Object.keys(result.activations) : [];
+  function handleReset() {
+    setResult(null);
+    setFile(null);
+    setPct(0);
+    setDeclaredReps(null);
+    // ページトップにスクロール
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   return (
     <div className="min-h-screen bg-[#080808] text-white">
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5
+
+      {/* ── Nav ── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 sm:px-8 py-5
         border-b border-white/[0.04] bg-[#080808]/90 backdrop-blur-xl">
         <div className="flex items-center gap-2.5">
           <div className="w-2 h-2 rounded-full bg-red-500" />
@@ -101,13 +105,14 @@ export default function Home() {
         <span className="text-[10px] text-[#2a2a2a] tracking-[0.3em] font-medium">BETA</span>
       </nav>
 
+      {/* ── Hero + Upload ── */}
       <section className="min-h-screen flex items-center pt-20">
-        <div className="w-full max-w-7xl mx-auto px-8 grid grid-cols-2 gap-20 items-center">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center py-16">
 
-          {/* 左カラム */}
+          {/* 左 */}
           <div>
             <p className="text-[11px] font-bold tracking-[0.3em] text-red-500 mb-6">POWERED BY MEDIAPIPE</p>
-            <h1 className="text-6xl font-black tracking-tight leading-[1.1] mb-6">
+            <h1 className="text-5xl sm:text-6xl font-black tracking-tight leading-[1.1] mb-6">
               筋肉活動を、<br />
               <span className="text-red-500">データで見る。</span>
             </h1>
@@ -122,7 +127,7 @@ export default function Home() {
               ))}
             </div>
             <div className="flex gap-10 pt-10 border-t border-[#111]">
-              {[["137", "対応種目"], ["20", "筋群"], ["38", "特徴量"]].map(([n, l]) => (
+              {[["141", "対応種目"], ["20", "筋群"], ["38", "特徴量"]].map(([n, l]) => (
                 <div key={l}>
                   <p className="text-3xl font-black">{n}</p>
                   <p className="text-[11px] text-[#666666] mt-1 tracking-wider">{l}</p>
@@ -131,7 +136,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 右カラム */}
+          {/* 右 */}
           <div className="space-y-4">
             {/* 設定パネル */}
             <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-6">
@@ -157,6 +162,7 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* 目標角度スライダー */}
               <div className="mb-6">
                 <div className="flex justify-between items-baseline mb-3">
                   <span className="text-xs text-[#555]">目標スクワット深度（膝角度）</span>
@@ -173,10 +179,12 @@ export default function Home() {
                   <span className="text-[10px] text-[#222]">浅い 160°</span>
                 </div>
               </div>
+
+              {/* 実施回数 */}
               <div>
                 <div className="flex justify-between items-baseline mb-3">
                   <span className="text-xs text-[#555]">実施回数（自己申告）</span>
-                  <span className="text-[10px] text-[#666666]">未入力の場合は検出値を使用</span>
+                  <span className="text-[10px] text-[#444]">未入力の場合は検出値を使用</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <input type="number" min={1} max={99} placeholder="—"
@@ -185,20 +193,22 @@ export default function Home() {
                     className="w-20 bg-[#111] border border-[#1a1a1a] rounded-xl px-3 py-2
                       text-white text-sm font-mono text-center focus:outline-none
                       focus:border-red-600/50 transition-colors" />
-                  <span className="text-xs text-[#666666]">回</span>
+                  <span className="text-xs text-[#555]">回</span>
                 </div>
               </div>
             </div>
 
             {/* アップロードエリア */}
-            <div onDrop={handleDrop}
+            <div
+              onDrop={handleDrop}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               className={`rounded-3xl border-2 border-dashed transition-all duration-300
-                ${dragOver ? "border-red-500/60 bg-red-500/5" : "border-[#1a1a1a] bg-[#0a0a0a]"}`}>
-
+                ${dragOver ? "border-red-500/60 bg-red-500/5" : "border-[#1a1a1a] bg-[#0a0a0a]"}`}
+            >
+              {/* 初期状態 */}
               {!loading && !result && (
-                <div className="p-10 text-center">
+                <div className="p-8 sm:p-10 text-center">
                   <div className="w-14 h-14 rounded-2xl bg-[#0f0f0f] border border-[#1a1a1a]
                     flex items-center justify-center mx-auto mb-5">
                     <svg className="w-6 h-6 text-[#2a2a2a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,21 +235,25 @@ export default function Home() {
                       ファイルを選択
                     </span>
                   </label>
-                  <button onClick={() => handleSubmit()} disabled={!file}
+                  <button
+                    onClick={() => handleSubmit()}
+                    disabled={!file}
                     className="w-full py-3.5 mt-1 bg-red-600 hover:bg-red-500
                       disabled:bg-[#0f0f0f] disabled:text-[#222] disabled:cursor-not-allowed
-                      text-white font-bold text-sm tracking-[0.1em] rounded-2xl transition-all duration-200">
+                      text-white font-bold text-sm tracking-[0.1em] rounded-2xl transition-all duration-200"
+                  >
                     解析する
                   </button>
                 </div>
               )}
 
+              {/* ローディング */}
               {loading && (
-                <div className="p-10 text-center">
+                <div className="p-8 sm:p-10 text-center">
                   <div className="w-10 h-10 rounded-full border-2 border-red-600 border-t-transparent
                     animate-spin mx-auto mb-6" />
                   <p className="text-white text-sm font-medium mb-1">{stepLabel}</p>
-                  <p className="text-[#222] text-xs font-mono mb-6">{pct}%</p>
+                  <p className="text-[#333] text-xs font-mono mb-6">{pct}%</p>
                   <div className="h-[1px] bg-[#0f0f0f] rounded-full overflow-hidden mb-4">
                     <div className="h-full bg-gradient-to-r from-red-900 to-red-500 rounded-full
                       transition-all duration-1000" style={{ width: `${pct}%` }} />
@@ -253,8 +267,9 @@ export default function Home() {
                 </div>
               )}
 
+              {/* 完了状態 */}
               {!loading && result && (
-                <div className="p-10 text-center">
+                <div className="p-8 sm:p-10 text-center">
                   <div className="w-10 h-10 rounded-full border border-red-500/30
                     flex items-center justify-center mx-auto mb-4">
                     <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,17 +277,21 @@ export default function Home() {
                     </svg>
                   </div>
                   <p className="text-white text-sm font-medium mb-1">解析完了</p>
-                  <p className="text-[#666666] text-xs mb-5">{result.total_reps} レップ検出</p>
-                  <button onClick={() => { setResult(null); setFile(null); setPct(0); setDeclaredReps(null); }}
-                    className="text-xs text-[#666666] hover:text-[#666] transition-colors">
-                    別の動画を解析する →
+                  <p className="text-[#555] text-xs mb-5">{result.total_reps} レップ検出</p>
+                  <button
+                    onClick={handleReset}
+                    className="text-xs text-[#666666] border border-[#1a1a1a] px-4 py-2 rounded-xl
+                      hover:border-[#2a2a2a] hover:text-[#888] transition-all"
+                  >
+                    別の動画を解析する
                   </button>
                 </div>
               )}
             </div>
 
+            {/* エラー */}
             {error && (
-              <div className="border border-red-900/40 bg-red-950/10 rounded-2xl p-4 text-red-500 text-sm">
+              <div className="border border-red-900/40 bg-red-950/10 rounded-2xl p-4 text-red-400 text-sm">
                 {error}
               </div>
             )}
@@ -280,80 +299,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 結果セクション */}
+      {/* ── 結果セクション ── */}
       {result && (
-        <section className="max-w-7xl mx-auto px-8 pb-32">
-          <div className="border-t border-[#0f0f0f] pt-20">
-            <div className="flex items-end justify-between mb-12">
-              <div>
-                <p className="text-[11px] tracking-[0.3em] text-[#222] font-bold mb-2">ANALYSIS RESULT</p>
-                <h2 className="text-4xl font-black">{result.exercise.replace(/_/g, " ")}</h2>
-              </div>
-              <div className="text-right">
-                {declaredReps && declaredReps !== result.total_reps ? (
-                  <div>
-                    <div className="flex items-end gap-3 justify-end">
-                      <span className="text-[#666666] text-2xl font-black line-through">{declaredReps}</span>
-                      <span className="text-7xl font-black text-red-500 leading-none">{result.total_reps}</span>
-                    </div>
-                    <p className="text-[11px] tracking-[0.2em] text-[#666666] mt-1">DETECTED / DECLARED</p>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-7xl font-black text-red-500 leading-none">{result.total_reps}</p>
-                    <p className="text-[11px] tracking-[0.2em] text-[#666666] mt-1">REPS DETECTED</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <RepAlert detected={result.total_reps} declared={declaredReps} />
-
-            <div className="flex gap-4 mb-8">
-              <div className="flex items-center gap-2 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl px-3 py-2">
-                <span className="text-[10px] text-[#666666] tracking-wider">目標深度</span>
-                <span className="text-xs font-mono text-white">{targetAngle}°</span>
-              </div>
-              {declaredReps && (
-                <div className="flex items-center gap-2 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl px-3 py-2">
-                  <span className="text-[10px] text-[#666666] tracking-wider">申告</span>
-                  <span className="text-xs font-mono text-white">{declaredReps}回</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-6 mb-8 border-b border-[#0f0f0f]">
-              {repKeys.map((key, i) => (
-                <button key={key} onClick={() => setActiveRep(i)}
-                  className={`pb-3 text-xs font-mono tracking-[0.2em] transition-all
-                    ${activeRep === i
-                      ? "text-white border-b-2 border-red-500 -mb-[1px]"
-                      : "text-[#666666] hover:text-[#666]"}`}>
-                  {key.replace("_", " ").toUpperCase()}
-                </button>
-              ))}
-            </div>
-
-            {repKeys[activeRep] && (
-              <RepCard
-                key={repKeys[activeRep]}
-                repKey={repKeys[activeRep]}
-                act={result.activations[repKeys[activeRep]]}
-              />
-            )}
-
-            {/* フォーム診断 */}
-            {repKeys[activeRep] && (
-              <div className="mt-6">
-                <FormFeedbackCard
-                  key={`form-${repKeys[activeRep]}`}
-                  repKey={repKeys[activeRep]}
-                  issues={result.form_feedback?.[repKeys[activeRep]] ?? []}
-                />
-              </div>
-            )}
-          </div>
-        </section>
+        <ResultPanel
+          result={result}
+          targetAngle={targetAngle}
+          declaredReps={declaredReps}
+          onReset={handleReset}
+        />
       )}
     </div>
   );
