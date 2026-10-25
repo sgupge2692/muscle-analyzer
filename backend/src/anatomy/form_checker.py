@@ -111,6 +111,7 @@ def check_form(
     exercise: str,
     rep_start: Optional[int] = None,
     rep_end: Optional[int] = None,
+    target_angle: Optional[float] = None,
 ) -> list[dict]:
     """
     関節角度の理想範囲との比較によるフォーム診断
@@ -123,13 +124,27 @@ def check_form(
         種目名（muscle_mapping.json のキー）
     rep_start, rep_end : int | None
         対象フレーム範囲（Noneの場合は全体）
+    target_angle : float | None
+        ユーザー設定の目標膝角度（スクワット系の理想範囲に反映）
 
     Returns
     -------
     list[dict]
         フォームの問題点リスト（問題なければ空リスト）
     """
-    standards = FORM_STANDARDS.get(exercise, DEFAULT_STANDARD)
+    standards = FORM_STANDARDS.get(exercise, DEFAULT_STANDARD).copy()
+
+    # ユーザー設定のtarget_angleで膝・股関節の理想範囲を動的に調整
+    if target_angle is not None and exercise in ("Squats", "Squat_Hold", "Jump_Squats", "Lateral_Squats"):
+        knee_margin = 20.0   # 目標角度±20°を理想範囲とする
+        hip_margin  = 25.0
+        standards = dict(standards)  # コピーして上書き
+        for key in ("right_knee", "left_knee"):
+            if key in standards:
+                standards[key] = (target_angle - knee_margin, target_angle + knee_margin)
+        for key in ("right_hip", "left_hip"):
+            if key in standards:
+                standards[key] = (target_angle - hip_margin - 10, target_angle - hip_margin + 20)
 
     # フレーム範囲でスライス
     if rep_start is not None and rep_end is not None:

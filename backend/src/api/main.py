@@ -117,7 +117,7 @@ async def analyze(
                     for col in sl.columns
                 }
                 # フォーム診断（レップごと）
-                issues = check_form(features, exercise, r["start"], r["end"])
+                issues = check_form(features, exercise, r["start"], r["end"], target_angle=target_angle)
                 if issues:
                     form_feedback[key] = issues
         else:
@@ -126,7 +126,7 @@ async def analyze(
                 for col in activations.columns
             }
             # フォーム診断（全体）
-            issues = check_form(features, exercise)
+            issues = check_form(features, exercise, target_angle=target_angle)
             if issues:
                 form_feedback["rep_1"] = issues
 
