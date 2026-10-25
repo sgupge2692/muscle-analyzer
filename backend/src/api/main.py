@@ -62,18 +62,27 @@ async def add_security_headers(request: Request, call_next):
 
 # ── レートリミット（slowapi） ───────────────────────────────
 try:
-    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi import Limiter
     from slowapi.util import get_remote_address
     from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
 
     limiter = Limiter(key_func=get_remote_address)
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
+
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request, exc):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "リクエストが多すぎます。しばらく待ってからお試しください。"},
+        )
+
     _rate_limit_available = True
     logger.info("レートリミット有効")
-except ImportError:
+except (ImportError, Exception) as e:
     _rate_limit_available = False
-    logger.warning("slowapi未インストール。レートリミット無効（pip install slowapi で有効化）")
+    logger.warning(f"レートリミット無効: {e} （pip install slowapi==0.1.9 で有効化）")
 
     # フォールバック用のダミーデコレータ
     class _DummyLimiter:
