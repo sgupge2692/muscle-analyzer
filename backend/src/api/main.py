@@ -79,7 +79,15 @@ async def analyze(
 
         # 3. レップ検出
         angles = load_knee_angles(str(landmarks_csv))
-        reps   = detect_reps(angles, angle_min=target_angle - 40, angle_max=target_angle + 40)
+        # angle_max: ユーザー設定の目標深度+15°まで。それ以上浅いスクワットはレップと認識しない
+        # angle_min: 人体の限界（40°以下は除外）
+        reps   = detect_reps(
+            angles,
+            angle_min=max(40.0, target_angle - 50),
+            angle_max=target_angle + 15,   # 目標より15°浅いまでは許容
+            min_prominence=15.0,           # 感度を少し上げる
+        )
+        print(f"レップ検出: {len(reps)}件 (angle_range={max(40.0, target_angle-50):.0f}°〜{target_angle+15:.0f}°)")
 
         # 4. 筋肉活動推定（ルールベース）
         muscle_ids     = MAPPING["exercise_muscle_mapping"][exercise]

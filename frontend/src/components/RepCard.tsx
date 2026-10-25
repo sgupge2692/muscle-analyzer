@@ -2,11 +2,25 @@ import { ActivationMap } from "@/types/analysis";
 import { MuscleHeatmap } from "./MuscleHeatmap";
 
 const MUSCLE_NAMES_JA: Record<string, string> = {
-  Quadriceps:  "大腿四頭筋",
-  Hamstring:   "ハムストリング",
-  Gluteus:     "大臀筋",
-  Lower_Back:  "脊柱起立筋",
-  Inner_Thigh: "内転筋",
+  Quadriceps:   "大腿四頭筋",
+  Hamstring:    "ハムストリング",
+  Gluteus:      "大臀筋",
+  Lower_Back:   "脊柱起立筋",
+  Inner_Thigh:  "内転筋",
+  Outer_Thigh:  "外転筋",
+  Calves:       "下腿三頭筋",
+  Upper_Back:   "僧帽筋",
+  Latissimus:   "広背筋",
+  Chest:        "大胸筋",
+  Shoulder:     "三角筋",
+  Triceps:      "上腕三頭筋",
+  Biceps:       "上腕二頭筋",
+  Obliques:     "腹斜筋",
+  Upper_Abs:    "腹直筋（上部）",
+  Lower_Abs:    "腹直筋（下部）",
+  Forearms:     "前腕",
+  Feet_Ankles:  "足首",
+  Wrists:       "手首",
 };
 
 export function RepCard({ repKey, act }: { repKey: string; act: ActivationMap }) {
