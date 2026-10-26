@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AnalyzeResult } from "@/types/analysis";
 import { MuscleHeatmap } from "./MuscleHeatmap";
 import { FormFeedbackCard } from "./FormFeedbackCard";
+import { AvatarViewer3D } from "./AvatarViewer3D";
 
 const MUSCLE_NAMES_JA: Record<string, string> = {
   Quadriceps:  "大腿四頭筋", Hamstring:   "ハムストリング",
@@ -16,7 +17,7 @@ const MUSCLE_NAMES_JA: Record<string, string> = {
   Forearms:    "前腕",       Feet_Ankles: "足首", Wrists: "手首",
 };
 
-type Tab = "muscles" | "form";
+type Tab = "muscles" | "form" | "avatar3d";
 
 export function ResultPanel({
   result,
@@ -40,6 +41,7 @@ export function ResultPanel({
   const topMuscle = sorted[0];
   const errorCount   = issues.filter(i => i.severity === "error").length;
   const warningCount = issues.filter(i => i.severity === "warning").length;
+  const has3D = result.landmarks_3d && result.landmarks_3d.length > 0;
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-8 pb-32">
@@ -53,7 +55,6 @@ export function ResultPanel({
           </h2>
         </div>
         <div className="flex items-center gap-4">
-          {/* レップ数 */}
           <div className="text-right">
             {declaredReps && declaredReps !== result.total_reps ? (
               <div className="flex items-end gap-2">
@@ -65,7 +66,6 @@ export function ResultPanel({
             )}
             <p className="text-[10px] tracking-[0.2em] text-[#444] mt-0.5">REPS DETECTED</p>
           </div>
-          {/* リセットボタン */}
           <button
             onClick={onReset}
             className="flex items-center gap-2 text-xs text-[#555] border border-[#1a1a1a]
@@ -115,7 +115,6 @@ export function ResultPanel({
           {/* 左：ヒートマップ */}
           <div className="lg:w-64 xl:w-72 flex-shrink-0 bg-[#080808] border-b lg:border-b-0 lg:border-r border-[#111]
             flex flex-col items-center justify-center p-6 lg:p-8">
-            {/* 主動筋バッジ */}
             {topMuscle && (
               <div className="flex items-center gap-2 mb-6 bg-[#0f0f0f] border border-[#1a1a1a] rounded-full px-3 py-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
@@ -128,7 +127,6 @@ export function ResultPanel({
             <div className="w-full max-w-[180px] lg:max-w-none">
               <MuscleHeatmap activations={act} />
             </div>
-            {/* 目標深度バッジ */}
             <div className="mt-6 flex items-center gap-2 text-[10px] text-[#444]">
               <span className="tracking-wider">目標</span>
               <span className="font-mono text-[#666]">{targetAngle}°</span>
@@ -175,6 +173,24 @@ export function ResultPanel({
                   </span>
                 )}
               </button>
+              {has3D && (
+                <button
+                  onClick={() => setTab("avatar3d")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-4 text-xs font-bold
+                    tracking-[0.15em] transition-all border-b-2
+                    ${tab === "avatar3d"
+                      ? "text-white border-red-500"
+                      : "text-[#444] border-transparent hover:text-[#666]"
+                    }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+                  </svg>
+                  3Dアバター
+                  <span className="text-[9px] text-red-500 font-bold">NEW</span>
+                </button>
+              )}
             </div>
 
             {/* タブコンテンツ */}
@@ -213,6 +229,19 @@ export function ResultPanel({
 
               {tab === "form" && (
                 <FormFeedbackCard repKey={repKey} issues={issues} />
+              )}
+
+              {tab === "avatar3d" && has3D && (
+                <div className="flex flex-col items-center gap-4">
+                  <p className="text-[10px] tracking-[0.2em] text-[#444] font-bold">3D MOTION VIEWER</p>
+                  <AvatarViewer3D
+                    frames={result.landmarks_3d}
+                    activations={act}
+                  />
+                  <p className="text-[#333] text-[10px] text-center">
+                    筋肉活動強度に応じてボーンが赤くハイライトされます
+                  </p>
+                </div>
               )}
             </div>
           </div>
