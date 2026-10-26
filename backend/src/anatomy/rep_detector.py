@@ -1,23 +1,23 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
 from scipy.signal import find_peaks, peak_prominences
-matplotlib.rcParams['font.family'] = 'Hiragino Sans'
+
 
 def load_knee_angles(csv_path: str) -> pd.Series:
     df = pd.read_csv(csv_path)
     angles = []
     for _, row in df.iterrows():
         if row['right_knee_visibility'] < 0.7:
-            angles.append(np.nan)
+            angles.append(float('nan'))
             continue
-        hip   = np.array([row['right_hip_x'],   row['right_hip_y']])
-        knee  = np.array([row['right_knee_x'],  row['right_knee_y']])
-        ankle = np.array([row['right_ankle_x'], row['right_ankle_y']])
+        hip   = [row['right_hip_x'],   row['right_hip_y']]
+        knee  = [row['right_knee_x'],  row['right_knee_y']]
+        ankle = [row['right_ankle_x'], row['right_ankle_y']]
+        import numpy as _np
+        hip, knee, ankle = _np.array(hip), _np.array(knee), _np.array(ankle)
         v1 = hip - knee; v2 = ankle - knee
-        cos_a = np.dot(v1,v2)/(np.linalg.norm(v1)*np.linalg.norm(v2)+1e-8)
-        angles.append(np.degrees(np.arccos(np.clip(cos_a,-1,1))))
+        cos_a = _np.dot(v1,v2)/(_np.linalg.norm(v1)*_np.linalg.norm(v2)+1e-8)
+        angles.append(_np.degrees(_np.arccos(_np.clip(cos_a,-1,1))))
     s = pd.Series(angles).ffill().bfill()
     return s.rolling(window=15, center=True).mean().ffill().bfill()
 
@@ -72,6 +72,11 @@ def detect_reps(angles: pd.Series,
 
 
 def visualize_reps(angles: pd.Series, reps: list, output_path: str):
+    """レップ検出結果を可視化（CLI用）"""
+    import matplotlib
+    import matplotlib.pyplot as plt
+    matplotlib.rcParams['font.family'] = 'Hiragino Sans'
+
     fig, ax = plt.subplots(figsize=(14, 5))
     ax.plot(angles, color='steelblue', linewidth=1.2, label='膝角度（平滑化）')
     ax.axhline(y=angles.mean(), color='gray', linestyle='--', alpha=0.5,
@@ -113,7 +118,6 @@ if __name__ == "__main__":
 
     visualize_reps(angles, reps, OUTPUT_IMG)
 
-    # reps.csv に書き出す（muscle_activation.py が読み込む）
     import csv, pathlib
     REPS_CSV = "data/processed/reps.csv"
     with open(REPS_CSV, "w", newline="") as f:
