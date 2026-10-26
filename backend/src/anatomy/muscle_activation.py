@@ -47,6 +47,31 @@ MUSCLE_JOINT_MAP = {
 # 値は相対的な活動強度の比率（合計1.0になるよう正規化して使う）
 # 参考: Escamilla 2001, Contreras 2015, Saeterbakken 2013
 EXERCISE_BASE_WEIGHTS: dict[str, dict[str, float]] = {
+    "Squat_Hold": {
+        "Quadriceps": 0.35, "Gluteus":    0.25, "Hamstring":  0.18,
+        "Lower_Back": 0.10, "Calves":     0.07, "Inner_Thigh":0.05,
+    },
+    "Jump_Squats": {
+        "Quadriceps": 0.38, "Gluteus":    0.22, "Hamstring":  0.15,
+        "Lower_Back": 0.08, "Calves":     0.12, "Inner_Thigh":0.05,
+    },
+    "Lateral_Squats": {
+        "Quadriceps": 0.30, "Gluteus":    0.25, "Hamstring":  0.18,
+        "Lower_Back": 0.08, "Calves":     0.07,
+        "Inner_Thigh":0.07, "Outer_Thigh":0.05,
+    },
+    "Forward_Lunges": {
+        "Quadriceps": 0.38, "Gluteus":    0.25, "Hamstring":  0.20,
+        "Calves":     0.10, "Inner_Thigh":0.07,
+    },
+    "Diamond_Pushups": {
+        "Chest":      0.30, "Triceps":    0.45, "Shoulder":   0.15,
+        "Lower_Back": 0.10,
+    },
+    "Pull_ups": {
+        "Latissimus": 0.40, "Biceps":     0.25, "Upper_Back": 0.20,
+        "Shoulder":   0.10, "Forearms":   0.05,
+    },
     "Squats": {
         "Quadriceps": 0.35,
         "Gluteus":    0.25,
