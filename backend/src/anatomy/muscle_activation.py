@@ -1,10 +1,6 @@
 import pandas as pd
 import numpy as np
 import json
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.rcParams['font.family'] = 'Hiragino Sans'
-
 # 筋群ごとの「関連関節」と「角度が小さいほど収縮か大きいほど収縮か」の定義
 MUSCLE_JOINT_MAP = {
     # ── 下半身 ──────────────────────────────────────────────────
@@ -211,7 +207,10 @@ def _compute_dynamic_modifier(features: pd.DataFrame, muscle: str, window: int) 
 def visualize_activation(activations: pd.DataFrame,
                          exercise: str,
                          output_path: str):
-    """筋肉活動強度を時系列グラフで可視化"""
+    """筋肉活動強度を時系列グラフで可視化（CLI用）"""
+    import matplotlib
+    import matplotlib.pyplot as plt
+    matplotlib.rcParams['font.family'] = 'Hiragino Sans'
     fig, ax = plt.subplots(figsize=(14, 6))
 
     colors = plt.cm.tab20(np.linspace(0, 1, len(activations.columns)))
