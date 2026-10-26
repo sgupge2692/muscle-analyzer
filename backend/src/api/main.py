@@ -7,7 +7,7 @@ import pandas as pd
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from pose.extract_landmarks import extract_landmarks
+from pose.extract_landmarks import extract_landmarks, landmarks_csv_to_3d_sequence
 from anatomy.angle_features import compute_angle_features
 from anatomy.rep_detector import load_knee_angles, detect_reps
 from anatomy.muscle_activation import estimate_activation
@@ -248,12 +248,16 @@ async def analyze(
             if issues:
                 form_feedback["rep_1"] = issues
 
+    # 3Dランドマーク時系列（Three.jsビューア用）
+    landmarks_3d = landmarks_csv_to_3d_sequence(str(landmarks_csv))
+
     response = {
         "exercise":      exercise,
         "total_reps":    len(rep_data),
         "activations":   rep_data,
         "form_feedback": form_feedback,
         "ml_available":  _ml_available,
+        "landmarks_3d":  landmarks_3d,   # world座標の時系列（フロント3Dビューア用）
     }
     if ml_scores is not None:
         response["ml_scores"] = ml_scores
