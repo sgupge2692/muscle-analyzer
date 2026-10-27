@@ -163,11 +163,14 @@ async def analyze(
     exercise: str = "Squats",
     target_angle: float = 110.0,
     ml_mode: bool = False,
+    body_scale: float = 1.0,   # 体型推定から取得した体格スケール係数（1.0=標準）
 ):
     if exercise not in MAPPING["exercise_muscle_mapping"]:
         raise HTTPException(400, f"未対応の種目です: {exercise}")
     if not (40.0 <= target_angle <= 170.0):
         raise HTTPException(400, "target_angleは40〜170の範囲で指定してください")
+    if not (0.5 <= body_scale <= 2.0):
+        raise HTTPException(400, "body_scaleは0.5〜2.0の範囲で指定してください")
 
     content = await file.read()
     _validate_video(file, content)
@@ -207,13 +210,20 @@ async def analyze(
         muscle_ids     = MAPPING["exercise_muscle_mapping"][exercise]
         muscle_groups  = MAPPING["muscle_groups"]
         active_muscles = [muscle_groups[str(i)] for i in muscle_ids]
-        activations    = estimate_activation(features, active_muscles, exercise=exercise)
+        activations    = estimate_activation(features, active_muscles, exercise=exercise, body_scale=body_scale)
 
-        # 5. MLモード
+        # 5. MLモード（PyTorch CNN優先、なければscikit-learn）
         ml_scores = None
-        if ml_mode and _ml_available:
+        if ml_mode:
             try:
-                ml_scores = predict_muscles(features)
+                from anatomy.ml_predictor import predict_muscles_torch, is_torch_model_available
+                if is_torch_model_available():
+                    muscle_id_map = {i: muscle_groups[str(i)] for i in range(len(muscle_groups))}
+                    ml_scores = predict_muscles_torch(landmarks_3d_full, muscle_id_map)
+                    logger.info("PyTorch CNN推論成功")
+                elif _ml_available:
+                    ml_scores = predict_muscles(features)
+                    logger.info("scikit-learn推論（CNNモデル未訓練）")
             except Exception as e:
                 logger.warning(f"ML推論失敗: {e}")
 
