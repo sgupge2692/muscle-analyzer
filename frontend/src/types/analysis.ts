@@ -27,5 +27,5 @@ export type AnalyzeResult = {
   activations: Record<string, ActivationMap>;
   form_feedback: Record<string, FormIssue[]>;
   ml_available: boolean;
-  landmarks_3d: FrameLandmarks3D[];  // world座標の時系列（3Dビューア用）
+  landmarks_3d?: FrameLandmarks3D[];  // world座標の時系列（3Dビューア用、オプショナル）
 };
