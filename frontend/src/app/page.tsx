@@ -67,7 +67,7 @@ export default function Home() {
     setPct(0);
     startFakeProgress();
     try {
-      const data = await analyzeVideo(target, exercise, targetAngle);
+      const data = await analyzeVideo(target, exercise, targetAngle, false, bodyData?.body_scale ?? 1.0);
       clearFakeProgress();
       setPct(100);
       setStepLabel("解析完了");
