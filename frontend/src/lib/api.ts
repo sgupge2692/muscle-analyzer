@@ -25,3 +25,35 @@ export async function analyzeVideo(
   }
   return res.json();
 }
+
+export type BodyEstimation = {
+  shoulder_width_cm: number;
+  hip_width_cm:      number;
+  torso_ratio:       number;
+  leg_ratio:         number;
+  body_scale:        number;
+  height_cm:         number;
+  note:              string;
+};
+
+export async function estimateBody(
+  frontImage: File,
+  heightCm: number,
+  sideImage?: File,
+): Promise<BodyEstimation> {
+  const formData = new FormData();
+  formData.append("front_image", frontImage);
+  formData.append("height_cm", String(heightCm));
+  if (sideImage) formData.append("side_image", sideImage);
+
+  const res = await fetch(`${API_URL}/estimate_body`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`体型推定エラー: ${res.status}${body ? ` — ${body}` : ""}`);
+  }
+  return res.json();
+}
