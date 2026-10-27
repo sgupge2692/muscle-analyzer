@@ -111,7 +111,8 @@ EXERCISE_BASE_WEIGHTS: dict[str, dict[str, float]] = {
 def estimate_activation(angle_features: pd.DataFrame,
                         active_muscles: list,
                         exercise: str = "",
-                        window: int = 15) -> pd.DataFrame:
+                        window: int = 15,
+                        body_scale: float = 1.0) -> pd.DataFrame:
     """
     筋肉活動強度を推定。
     
@@ -136,6 +137,20 @@ def estimate_activation(angle_features: pd.DataFrame,
             # 基準重みを正規化（合計1.0）
             total = sum(target_weights.values())
             normalized_weights = {m: w / total for m, w in target_weights.items()}
+
+            # body_scale補正：体格が大きい（body_scale>1）ほど
+            # 大筋群（Gluteus/Quadriceps/Latissimus）への負荷が増加する傾向
+            # 参考: Bret Contreras 2015「筋断面積と活動強度の関係」
+            LARGE_MUSCLES = {"Gluteus", "Quadriceps", "Latissimus", "Hamstring"}
+            if body_scale != 1.0:
+                adjusted = {}
+                for m, w in normalized_weights.items():
+                    if m in LARGE_MUSCLES:
+                        adjusted[m] = w * (1.0 + (body_scale - 1.0) * 0.3)
+                    else:
+                        adjusted[m] = w * (1.0 - (body_scale - 1.0) * 0.1)
+                total_adj = sum(adjusted.values())
+                normalized_weights = {m: w / total_adj for m, w in adjusted.items()}
             
             for muscle, base_w in normalized_weights.items():
                 # 動的な変調：関節角度の変化率でベース重みを±20%変調
