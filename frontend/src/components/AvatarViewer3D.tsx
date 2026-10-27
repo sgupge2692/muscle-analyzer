@@ -49,7 +49,7 @@ type Props = {
 };
 
 export function AvatarViewer3D({ frames, activations = {} }: Props) {
-  const canvasRef    = useRef<HTMLCanvasElement>(null);
+  const canvasRef    = useRef<HTMLCanvasElement | null>(null);
   const frameIdxRef  = useRef(0);
   const playingRef   = useRef(false);
   const rotationRef  = useRef({ x: 0.3, y: 0 });
