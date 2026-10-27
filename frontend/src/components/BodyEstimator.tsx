@@ -9,8 +9,8 @@ export function BodyEstimator({ onEstimated }: { onEstimated?: (data: BodyEstima
   const [result,    setResult]      = useState<BodyEstimation | null>(null);
   const [loading,   setLoading]     = useState(false);
   const [error,     setError]       = useState<string | null>(null);
-  const frontRef = useRef<HTMLInputElement>(null);
-  const sideRef  = useRef<HTMLInputElement>(null);
+  const frontRef = useRef<HTMLInputElement | null>(null);
+  const sideRef  = useRef<HTMLInputElement | null>(null);
 
   const handleSubmit = async () => {
     if (!frontFile) { setError("正面写真を選択してください"); return; }
