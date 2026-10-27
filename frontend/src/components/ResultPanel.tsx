@@ -41,7 +41,7 @@ export function ResultPanel({
   const topMuscle = sorted[0];
   const errorCount   = issues.filter(i => i.severity === "error").length;
   const warningCount = issues.filter(i => i.severity === "warning").length;
-  const has3D = result.landmarks_3d && result.landmarks_3d.length > 0;
+  const has3D = (result.landmarks_3d ?? []).length > 0;
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-8 pb-32">
@@ -235,7 +235,7 @@ export function ResultPanel({
                 <div className="flex flex-col items-center gap-4">
                   <p className="text-[10px] tracking-[0.2em] text-[#444] font-bold">3D MOTION VIEWER</p>
                   <AvatarViewer3D
-                    frames={result.landmarks_3d}
+                    frames={result.landmarks_3d ?? []}
                     activations={act}
                   />
                   <p className="text-[#333] text-[10px] text-center">
