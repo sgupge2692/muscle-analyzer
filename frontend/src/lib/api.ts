@@ -7,12 +7,14 @@ export async function analyzeVideo(
   exercise: string,
   targetAngle: number,
   mlMode: boolean = false,
+  bodyScale: number = 1.0,
 ): Promise<AnalyzeResult> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("exercise", exercise);
   formData.append("target_angle", String(targetAngle));
   formData.append("ml_mode", String(mlMode));
+  formData.append("body_scale", String(bodyScale));
 
   const res = await fetch(`${API_URL}/analyze`, {
     method: "POST",
