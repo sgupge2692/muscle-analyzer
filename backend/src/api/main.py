@@ -21,19 +21,24 @@ logging.basicConfig(
 logger = logging.getLogger("muscle_analyzer")
 
 # ── アップロード制限 ────────────────────────────────────────
-MAX_FILE_SIZE_MB   = int(os.getenv("MAX_FILE_SIZE_MB", "100"))   # 100MB
+MAX_FILE_SIZE_MB    = int(os.getenv("MAX_FILE_SIZE_MB", "100"))
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-ALLOWED_MIME_TYPES = {
+ALLOWED_MIME_TYPES  = {
     "video/mp4", "video/quicktime", "video/x-msvideo",
     "video/webm", "video/x-matroska",
 }
-ALLOWED_EXTENSIONS = {".mp4", ".mov", ".avi", ".webm", ".mkv"}
+ALLOWED_EXTENSIONS  = {".mp4", ".mov", ".avi", ".webm", ".mkv"}
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_IMAGE_EXTS  = {".jpg", ".jpeg", ".png", ".webp"}
+
+# 3Dシーケンスのフレーム間引き率（1=全フレーム, 3=1/3に間引き）
+# 30fpsの動画で3にすると10fps相当になりレスポンスサイズが約1/3になる
+LANDMARK_3D_STRIDE  = int(os.getenv("LANDMARK_3D_STRIDE", "3"))
 
 # ── FastAPI ─────────────────────────────────────────────────
 app = FastAPI(
     title="Muscle Analyzer API",
-    version="0.4.0",
-    # 本番では docs を無効化（情報漏洩防止）
+    version="0.5.0",
     docs_url="/docs" if os.getenv("ENV", "development") == "development" else None,
     redoc_url=None,
 )
@@ -46,7 +51,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_methods=["POST", "GET"],
-    allow_headers=["Content-Type", "Accept"],   # * → 必要なヘッダーのみ
+    allow_headers=["Content-Type", "Accept"],
     max_age=600,
 )
 
@@ -82,9 +87,8 @@ try:
     logger.info("レートリミット有効")
 except (ImportError, Exception) as e:
     _rate_limit_available = False
-    logger.warning(f"レートリミット無効: {e} （pip install slowapi==0.1.9 で有効化）")
+    logger.warning(f"slowapi未インストール。レートリミット無効（pip install slowapi で有効化）")
 
-    # フォールバック用のダミーデコレータ
     class _DummyLimiter:
         def limit(self, *a, **kw):
             def decorator(f): return f
@@ -106,48 +110,45 @@ except Exception as e:
     logger.warning(f"MLモデルロード失敗（ルールベースのみ使用）: {e}")
 
 
-# ── ヘルパー：ファイルバリデーション ───────────────────────
+# ── ヘルパー：バリデーション ────────────────────────────────
 def _validate_video(file: UploadFile, content: bytes) -> None:
-    """アップロードファイルの安全性検証"""
-    # 1. ファイルサイズ
     if len(content) > MAX_FILE_SIZE_BYTES:
-        raise HTTPException(
-            413, f"ファイルサイズが上限（{MAX_FILE_SIZE_MB}MB）を超えています"
-        )
+        raise HTTPException(413, f"ファイルサイズが上限（{MAX_FILE_SIZE_MB}MB）を超えています")
     if len(content) == 0:
         raise HTTPException(400, "空のファイルです")
-
-    # 2. 拡張子（Content-Typeは偽装できるので拡張子も確認）
     if file.filename:
         ext = Path(file.filename).suffix.lower()
         if ext not in ALLOWED_EXTENSIONS:
-            raise HTTPException(
-                415, f"対応していないファイル形式です（対応: {', '.join(ALLOWED_EXTENSIONS)}）"
-            )
-
-    # 3. MIMEタイプ
+            raise HTTPException(415, f"対応していないファイル形式です（対応: {', '.join(ALLOWED_EXTENSIONS)}）")
     if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            415, f"対応していないContent-Typeです: {file.content_type}"
-        )
-
-    # 4. マジックバイト（ファイル先頭バイトで実際の形式を確認）
+        raise HTTPException(415, f"対応していないContent-Typeです: {file.content_type}")
     magic = content[:12]
     is_mp4  = magic[4:8] in (b"ftyp", b"mdat", b"moov") or magic[:4] == b"\x00\x00\x00\x18"
     is_mov  = b"ftyp" in magic or b"moov" in magic
     is_avi  = magic[:4] == b"RIFF" and magic[8:12] == b"AVI "
     is_webm = magic[:4] == b"\x1a\x45\xdf\xa3"
     if not any([is_mp4, is_mov, is_avi, is_webm]):
-        # マジックバイトで判定できない場合は警告のみ（厳格にしすぎると誤検知する）
         logger.warning(f"マジックバイト不一致: {magic.hex()[:24]} - 処理を続行")
+
+
+def _validate_image(file: UploadFile, content: bytes) -> None:
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(413, "画像は10MB以下にしてください")
+    if len(content) == 0:
+        raise HTTPException(400, "空のファイルです")
+    if file.filename:
+        ext = Path(file.filename).suffix.lower()
+        if ext not in ALLOWED_IMAGE_EXTS:
+            raise HTTPException(415, "対応していない画像形式です（jpg/png/webp）")
+    if file.content_type and file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(415, f"対応していないContent-Typeです: {file.content_type}")
 
 
 # ── エンドポイント ──────────────────────────────────────────
 @app.get("/health")
 def health():
-    """ヘルスチェック（本番では最小限の情報のみ返す）"""
     is_dev = os.getenv("ENV", "development") == "development"
-    base = {"status": "ok", "version": "0.4.0"}
+    base = {"status": "ok", "version": "0.5.0"}
     if is_dev:
         base["ml_available"] = _ml_available
         base["supported_exercises"] = list(MAPPING["exercise_muscle_mapping"].keys())
@@ -155,29 +156,22 @@ def health():
 
 
 @app.post("/analyze")
-@limiter.limit("10/minute")   # IP単位で1分10回まで
+@limiter.limit("10/minute")
 async def analyze(
-    request: Request,          # slowapi に必要
+    request: Request,
     file: UploadFile = File(...),
     exercise: str = "Squats",
     target_angle: float = 110.0,
     ml_mode: bool = False,
 ):
-    # ── 入力バリデーション ──────────────────────────────────
-    # 種目
     if exercise not in MAPPING["exercise_muscle_mapping"]:
         raise HTTPException(400, f"未対応の種目です: {exercise}")
-
-    # 目標角度（人体の可動域範囲に制限）
     if not (40.0 <= target_angle <= 170.0):
         raise HTTPException(400, "target_angleは40〜170の範囲で指定してください")
 
-    # ファイル読み込み・バリデーション
     content = await file.read()
     _validate_video(file, content)
 
-    # ── 処理 ───────────────────────────────────────────────
-    # ファイル名はuuidで無害化（Path Traversal対策）
     safe_filename = f"{uuid.uuid4()}{Path(file.filename or 'video.mp4').suffix.lower()}"
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -248,8 +242,11 @@ async def analyze(
             if issues:
                 form_feedback["rep_1"] = issues
 
-    # 3Dランドマーク時系列（Three.jsビューア用）
-    landmarks_3d = landmarks_csv_to_3d_sequence(str(landmarks_csv))
+        # 7. 3Dランドマーク時系列（tmpdir内で生成 ← バグ修正）
+        # フレームを間引いてレスポンスサイズを抑制
+        landmarks_3d_full = landmarks_csv_to_3d_sequence(str(landmarks_csv))
+        landmarks_3d = landmarks_3d_full[::LANDMARK_3D_STRIDE]
+        logger.info(f"3Dランドマーク: {len(landmarks_3d_full)}フレーム → {len(landmarks_3d)}フレーム（stride={LANDMARK_3D_STRIDE}）")
 
     response = {
         "exercise":      exercise,
@@ -257,9 +254,148 @@ async def analyze(
         "activations":   rep_data,
         "form_feedback": form_feedback,
         "ml_available":  _ml_available,
-        "landmarks_3d":  landmarks_3d,   # world座標の時系列（フロント3Dビューア用）
+        "landmarks_3d":  landmarks_3d,
     }
     if ml_scores is not None:
         response["ml_scores"] = ml_scores
 
     return response
+
+
+@app.post("/estimate_body")
+@limiter.limit("5/minute")
+async def estimate_body(
+    request: Request,
+    front_image: UploadFile = File(...),
+    side_image:  UploadFile = File(None),
+    height_cm:   float = 170.0,
+):
+    """
+    正面・側面写真から体型パラメータを推定する（フェーズ2機能）
+
+    現時点はMediaPipeで肩幅・股関節幅・骨格比率を推定する簡易版。
+    将来的にはSMPLモデルに差し替えて体積・筋断面積も推定する予定。
+
+    Returns:
+        shoulder_width_cm: 肩幅推定値（cm）
+        hip_width_cm:      骨盤幅推定値（cm）
+        torso_ratio:       胴体/身長比
+        leg_ratio:         脚長/身長比
+        body_scale:        全体スケール係数（筋肉活動推定の重み補正に使用）
+    """
+    if not (100.0 <= height_cm <= 220.0):
+        raise HTTPException(400, "height_cmは100〜220の範囲で指定してください")
+
+    front_content = await front_image.read()
+    _validate_image(front_image, front_content)
+
+    side_content = None
+    if side_image and side_image.filename:
+        side_content = await side_image.read()
+        _validate_image(side_image, side_content)
+
+    try:
+        result = _estimate_body_from_images(front_content, side_content, height_cm)
+    except Exception as e:
+        logger.error(f"体型推定失敗: {e}", exc_info=True)
+        raise HTTPException(500, "体型推定に失敗しました")
+
+    return result
+
+
+def _estimate_body_from_images(
+    front_bytes: bytes,
+    side_bytes: bytes | None,
+    height_cm: float,
+) -> dict:
+    """
+    MediaPipeで正面画像から骨格比率を推定する。
+
+    推定ロジック：
+    - 肩幅 = |左肩x - 右肩x| * 画像幅px → cm変換（身長を基準にスケール）
+    - 骨盤幅 = |左腰x - 右腰x| * 画像幅px → cm変換
+    - 上半身比 = |肩y - 腰y| / |頭y - 足y|
+    - 脚長比   = |腰y - 足y| / |頭y - 足y|
+
+    ※ 2D画像からの推定なので奥行き成分は含まない簡易推定。
+      精度向上はフェーズ3でSMPLモデルに置き換える。
+    """
+    import cv2
+    import mediapipe as mp
+    from mediapipe.tasks import python as mp_python
+    from mediapipe.tasks.python import vision as mp_vision
+    import numpy as np
+
+    MODEL_PATH = "src/pose/pose_landmarker.task"
+
+    base_options = mp_python.BaseOptions(model_asset_path=MODEL_PATH)
+    options = mp_vision.PoseLandmarkerOptions(base_options=base_options)
+    detector = mp_vision.PoseLandmarker.create_from_options(options)
+
+    # 正面画像を解析
+    nparr  = np.frombuffer(front_bytes, np.uint8)
+    img    = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    h_px, w_px = img.shape[:2]
+    rgb    = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+    result = detector.detect(mp_img)
+
+    if not result.pose_landmarks:
+        raise ValueError("正面画像から骨格を検出できませんでした。全身が写った画像を使用してください")
+
+    lm = result.pose_landmarks[0]
+
+    # MediaPipe landmark index
+    # 11: left_shoulder, 12: right_shoulder
+    # 23: left_hip,      24: right_hip
+    # 0:  nose,          27: left_ankle, 28: right_ankle
+    def pt(idx): return lm[idx]
+
+    left_shoulder  = pt(11)
+    right_shoulder = pt(12)
+    left_hip       = pt(23)
+    right_hip      = pt(24)
+    nose           = pt(0)
+    left_ankle     = pt(27)
+    right_ankle    = pt(28)
+
+    # ピクセル幅→cm変換係数
+    # 全身高（画面内）を基準にスケール
+    body_top_y    = nose.y
+    body_bottom_y = (left_ankle.y + right_ankle.y) / 2
+    body_height_ratio = body_bottom_y - body_top_y  # 0〜1の比率
+
+    if body_height_ratio < 0.1:
+        raise ValueError("全身が写っていない可能性があります")
+
+    px_per_cm = (body_height_ratio * h_px) / height_cm
+
+    # 肩幅
+    shoulder_width_px = abs(left_shoulder.x - right_shoulder.x) * w_px
+    shoulder_width_cm = round(shoulder_width_px / px_per_cm, 1)
+
+    # 骨盤幅
+    hip_width_px = abs(left_hip.x - right_hip.x) * w_px
+    hip_width_cm = round(hip_width_px / px_per_cm, 1)
+
+    # 上半身・脚長比
+    shoulder_y     = (left_shoulder.y + right_shoulder.y) / 2
+    hip_y          = (left_hip.y + right_hip.y) / 2
+    ankle_y        = (left_ankle.y + right_ankle.y) / 2
+    torso_ratio    = round((hip_y - shoulder_y) / body_height_ratio, 3)
+    leg_ratio      = round((ankle_y - hip_y) / body_height_ratio, 3)
+
+    # 体格スケール係数（標準体型を1.0とする）
+    # 肩幅と骨盤幅の比率で体格の「横幅」を標準化
+    STANDARD_SHOULDER_CM = 42.0  # 成人男性平均
+    body_scale = round(shoulder_width_cm / STANDARD_SHOULDER_CM, 3)
+
+    return {
+        "shoulder_width_cm": shoulder_width_cm,
+        "hip_width_cm":      hip_width_cm,
+        "torso_ratio":       torso_ratio,
+        "leg_ratio":         leg_ratio,
+        "body_scale":        body_scale,
+        "height_cm":         height_cm,
+        "note":              "2D画像からの簡易推定。精度向上はSMPLモデルへの移行で対応予定（フェーズ3）",
+    }
