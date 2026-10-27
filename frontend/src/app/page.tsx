@@ -303,33 +303,33 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── 体型推定セクション（解析前に表示） ── */}
+      {!result && (
+        <div className="w-full max-w-2xl mx-auto px-4 mt-6">
+          <button
+            onClick={() => setShowBodyEstimator(v => !v)}
+            className="flex items-center gap-2 text-xs text-[#444] hover:text-[#666] transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            {showBodyEstimator ? "体型推定を閉じる" : "体型推定で精度を向上させる（任意）"}
+            {bodyData && <span className="text-green-500 text-[10px]">✓ 設定済み</span>}
+          </button>
+          {showBodyEstimator && (
+            <div className="mt-4">
+              <BodyEstimator onEstimated={(data) => {
+                setBodyData(data);
+                setShowBodyEstimator(false);
+              }} />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── 結果セクション ── */}
       {result && (
-        {/* 体型推定セクション */}
-        {!result && (
-          <div className="w-full max-w-2xl mx-auto px-4 mt-6">
-            <button
-              onClick={() => setShowBodyEstimator(v => !v)}
-              className="flex items-center gap-2 text-xs text-[#444] hover:text-[#666] transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              {showBodyEstimator ? "体型推定を閉じる" : "体型推定で精度を向上させる（任意）"}
-              {bodyData && <span className="text-green-500 text-[10px]">✓ 設定済み</span>}
-            </button>
-            {showBodyEstimator && (
-              <div className="mt-4">
-                <BodyEstimator onEstimated={(data) => {
-                  setBodyData(data);
-                  setShowBodyEstimator(false);
-                }} />
-              </div>
-            )}
-          </div>
-        )}
-
         <ResultPanel
           result={result}
           targetAngle={targetAngle}
