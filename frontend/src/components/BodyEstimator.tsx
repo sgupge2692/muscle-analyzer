@@ -31,7 +31,7 @@ export function BodyEstimator({ onEstimated }: { onEstimated?: (data: BodyEstima
   }: {
     label: string;
     file: File | null;
-    inputRef: React.RefObject<HTMLInputElement>;
+    inputRef: React.RefObject<HTMLInputElement | null>;
     onChange: (f: File) => void;
   }) => (
     <div
