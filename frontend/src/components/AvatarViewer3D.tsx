@@ -175,6 +175,23 @@ export function AvatarViewer3D({ frames, activations = {} }: Props) {
   };
   const onMouseUp = () => { dragRef.current.active = false; };
 
+  // タッチ操作（スマホ対応）
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    dragRef.current = { active: true, lastX: t.clientX, lastY: t.clientY };
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!dragRef.current.active) return;
+    const t = e.touches[0];
+    const dx = t.clientX - dragRef.current.lastX;
+    const dy = t.clientY - dragRef.current.lastY;
+    rotationRef.current.y += dx * 0.01;
+    rotationRef.current.x += dy * 0.01;
+    dragRef.current.lastX = t.clientX;
+    dragRef.current.lastY = t.clientY;
+  };
+  const onTouchEnd = () => { dragRef.current.active = false; };
+
   const togglePlay = () => {
     playingRef.current = !playingRef.current;
     setPlaying(playingRef.current);
@@ -196,6 +213,9 @@ export function AvatarViewer3D({ frames, activations = {} }: Props) {
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
       />
       <div className="flex items-center gap-3 w-full max-w-[300px]">
         <button
@@ -214,7 +234,7 @@ export function AvatarViewer3D({ frames, activations = {} }: Props) {
           {frameIdx}/{frames.length}
         </span>
       </div>
-      <p className="text-[#444] text-[10px]">ドラッグで視点回転</p>
+      <p className="text-[#444] text-[10px]">ドラッグ / スワイプで視点回転</p>
     </div>
   );
 }
