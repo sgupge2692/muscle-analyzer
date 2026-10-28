@@ -1,8 +1,39 @@
+# Python
 .venv
 __pycache__
 *.pyc
+*.pyo
+*.pyd
+.Python
+
+# 環境変数（絶対に含めない）
 .env
+.env.*
+!.env.example
+
+# 開発用データ（MuscleMapは学術限定・本番不要）
 data/raw/
+data/processed/
 output/
 notebooks/
 tests/
+
+# Git
+.git
+.gitignore
+
+# ドキュメント
+docs/
+*.md
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ログ
+*.log
+logs/
