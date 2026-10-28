@@ -212,7 +212,12 @@ async def analyze(
         active_muscles = [muscle_groups[str(i)] for i in muscle_ids]
         activations    = estimate_activation(features, active_muscles, exercise=exercise, body_scale=body_scale)
 
-        # 5. MLモード（PyTorch CNN優先、なければscikit-learn）
+        # 5. 3Dランドマーク時系列（MLモードより前に生成）
+        landmarks_3d_full = landmarks_csv_to_3d_sequence(str(landmarks_csv))
+        landmarks_3d = landmarks_3d_full[::LANDMARK_3D_STRIDE]
+        logger.info(f"3Dランドマーク: {len(landmarks_3d_full)}フレーム → {len(landmarks_3d)}フレーム（stride={LANDMARK_3D_STRIDE}）")
+
+        # 6. MLモード（PyTorch CNN優先、なければscikit-learn）
         ml_scores = None
         if ml_mode:
             try:
@@ -227,7 +232,7 @@ async def analyze(
             except Exception as e:
                 logger.warning(f"ML推論失敗: {e}")
 
-        # 6. レップごとの集計 + フォーム診断
+        # 7. レップごとの集計 + フォーム診断
         rep_data      = {}
         form_feedback = {}
 
@@ -252,11 +257,6 @@ async def analyze(
             if issues:
                 form_feedback["rep_1"] = issues
 
-        # 7. 3Dランドマーク時系列（tmpdir内で生成 ← バグ修正）
-        # フレームを間引いてレスポンスサイズを抑制
-        landmarks_3d_full = landmarks_csv_to_3d_sequence(str(landmarks_csv))
-        landmarks_3d = landmarks_3d_full[::LANDMARK_3D_STRIDE]
-        logger.info(f"3Dランドマーク: {len(landmarks_3d_full)}フレーム → {len(landmarks_3d)}フレーム（stride={LANDMARK_3D_STRIDE}）")
 
     response = {
         "exercise":      exercise,
