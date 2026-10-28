@@ -1,6 +1,9 @@
 import sys, json, shutil, tempfile, os, uuid, logging
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends
+from fastapi.security import HTTPBearer
+
+security = HTTPBearer(auto_error=False)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import pandas as pd
@@ -12,6 +15,7 @@ from anatomy.angle_features import compute_angle_features
 from anatomy.rep_detector import load_knee_angles, detect_reps
 from anatomy.muscle_activation import estimate_activation
 from anatomy.form_checker import check_form
+from api.auth import router as auth_router, get_current_user
 
 # ── ロギング設定 ────────────────────────────────────────────
 logging.basicConfig(
@@ -42,6 +46,9 @@ app = FastAPI(
     docs_url="/docs" if os.getenv("ENV", "development") == "development" else None,
     redoc_url=None,
 )
+
+# 認証ルーターを登録
+app.include_router(auth_router)
 
 # ── CORS ────────────────────────────────────────────────────
 _origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
@@ -163,8 +170,19 @@ async def analyze(
     exercise: str = "Squats",
     target_angle: float = 110.0,
     ml_mode: bool = False,
-    body_scale: float = 1.0,   # 体型推定から取得した体格スケール係数（1.0=標準）
+    body_scale: float = 1.0,
+    credentials = Depends(security),   # オプション認証（未ログインでも使用可）
 ):
+    # ログイン済みの場合はユーザーIDをログに記録
+    current_user_id = None
+    if credentials:
+        try:
+            from api.auth import _verify_jwt
+            payload = _verify_jwt(credentials.credentials)
+            current_user_id = payload.get("sub")
+            logger.info(f"認証済みリクエスト: user={current_user_id}")
+        except Exception:
+            pass  # 無効なトークンは無視（オプション認証のため）
     if exercise not in MAPPING["exercise_muscle_mapping"]:
         raise HTTPException(400, f"未対応の種目です: {exercise}")
     if not (40.0 <= target_angle <= 170.0):
