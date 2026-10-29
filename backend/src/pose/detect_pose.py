@@ -3,10 +3,11 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import urllib.request
+from pathlib import Path
 import os
 
 # モデルのパス（すでにダウンロード済みなのでスキップされる）
-model_path = "src/pose/pose_landmarker.task"
+model_path = str(Path(__file__).resolve().parent / "pose_landmarker.task")
 if not os.path.exists(model_path):
     print("モデルをダウンロード中...")
     urllib.request.urlretrieve(

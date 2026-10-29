@@ -9,11 +9,11 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # システム依存ライブラリ
-# - libgl1: OpenCV が必要
+# - libgl1: OpenCV が必要（旧 libgl1-mesa-glx は Debian で非推奨/削除されたため libgl1 を指定）
 # - libglib2.0-0: MediaPipe が必要
 # - curl: ヘルスチェック用
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     curl \
     && rm -rf /var/lib/apt/lists/*

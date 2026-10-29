@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from pathlib import Path
 import csv
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
@@ -18,7 +19,7 @@ LANDMARK_NAMES = [
     "left_foot_index","right_foot_index"
 ]
 
-MODEL_PATH = "src/pose/pose_landmarker.task"
+MODEL_PATH = str(Path(__file__).resolve().parent / "pose_landmarker.task")
 
 
 def extract_landmarks(

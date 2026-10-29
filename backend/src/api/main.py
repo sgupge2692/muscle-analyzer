@@ -125,7 +125,8 @@ except (ImportError, Exception) as e:
     limiter = _DummyLimiter()
 
 # ── データロード ────────────────────────────────────────────
-MAPPING_JSON = Path("data/muscle_mapping.json")
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+MAPPING_JSON = BACKEND_DIR / "data" / "muscle_mapping.json"
 with open(MAPPING_JSON) as f:
     MAPPING = json.load(f)
 
@@ -377,7 +378,7 @@ def _estimate_body_from_images(
     from mediapipe.tasks.python import vision as mp_vision
     import numpy as np
 
-    MODEL_PATH = "src/pose/pose_landmarker.task"
+    MODEL_PATH = str(Path(__file__).resolve().parent.parent / "pose" / "pose_landmarker.task")
 
     base_options = mp_python.BaseOptions(model_asset_path=MODEL_PATH)
     options = mp_vision.PoseLandmarkerOptions(base_options=base_options)

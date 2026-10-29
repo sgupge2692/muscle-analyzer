@@ -36,7 +36,8 @@ JWT_EXPIRE_MIN  = int(os.getenv("JWT_EXPIRE_MIN", "60"))
 BCRYPT_COST     = 12  # 2^12 = 4096回ハッシュ（十分な計算コスト）
 
 # ユーザーDBのパス（本番はPostgreSQL等に移行予定、現在はJSONファイル）
-USERS_DB_PATH = Path(os.getenv("USERS_DB_PATH", "data/users.json"))
+BACKEND_DIR   = Path(__file__).resolve().parent.parent.parent
+USERS_DB_PATH = Path(os.getenv("USERS_DB_PATH", str(BACKEND_DIR / "data" / "users.json")))
 
 security = HTTPBearer(auto_error=False)
 router   = APIRouter(prefix="/auth", tags=["auth"])
