@@ -25,7 +25,7 @@ logging.basicConfig(
 logger = logging.getLogger("muscle_analyzer")
 
 # ── アップロード制限 ────────────────────────────────────────
-MAX_FILE_SIZE_MB    = int(os.getenv("MAX_FILE_SIZE_MB", "100"))
+MAX_FILE_SIZE_MB    = int(os.getenv("MAX_FILE_SIZE_MB", "200"))
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 ALLOWED_MIME_TYPES  = {
     "video/mp4", "video/quicktime", "video/x-msvideo",
@@ -171,6 +171,7 @@ async def analyze(
     target_angle: float = 110.0,
     ml_mode: bool = False,
     body_scale: float = 1.0,
+    frame_skip: int = 2,       # フレームスキップ数（速度改善）
     credentials = Depends(security),   # オプション認証（未ログインでも使用可）
 ):
     # ログイン済みの場合はユーザーIDをログに記録
@@ -202,7 +203,7 @@ async def analyze(
         # 1. 骨格検出
         landmarks_csv = Path(tmpdir) / "landmarks.csv"
         try:
-            extract_landmarks(str(tmp_video), str(landmarks_csv))
+            extract_landmarks(str(tmp_video), str(landmarks_csv), frame_skip=frame_skip)
         except Exception as e:
             logger.error(f"ランドマーク抽出失敗: {e}", exc_info=True)
             raise HTTPException(500, "動画の解析に失敗しました。別の動画をお試しください")
