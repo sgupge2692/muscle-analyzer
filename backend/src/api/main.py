@@ -1,6 +1,6 @@
 import sys, json, shutil, tempfile, os, uuid, logging
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends, WebSocket
 from fastapi.security import HTTPBearer
 
 security = HTTPBearer(auto_error=False)
@@ -16,6 +16,7 @@ from anatomy.rep_detector import load_knee_angles, detect_reps
 from anatomy.muscle_activation import estimate_activation
 from anatomy.form_checker import check_form
 from api.auth import router as auth_router, get_current_user
+from api.websocket_stream import websocket_stream_endpoint
 
 # ── ロギング設定 ────────────────────────────────────────────
 logging.basicConfig(
@@ -49,6 +50,18 @@ app = FastAPI(
 
 # 認証ルーターを登録
 app.include_router(auth_router)
+
+
+@app.websocket("/ws/stream")
+async def websocket_stream(
+    websocket: WebSocket,
+    exercise: str = "Squats",
+):
+    """
+    リアルタイムカメラ解析WebSocketエンドポイント
+    ws://host/ws/stream?exercise=Squats
+    """
+    await websocket_stream_endpoint(websocket, exercise=exercise)
 
 # ── CORS ────────────────────────────────────────────────────
 _origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
