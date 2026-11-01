@@ -111,8 +111,53 @@ export default function Home() {
         <span className="text-[10px] text-[#2a2a2a] tracking-[0.3em] font-medium">BETA</span>
       </nav>
 
+      {/* ── 入力モード切替 ── */}
+      {!result && (
+        <div className="w-full max-w-2xl mx-auto px-4 mb-6">
+          <div className="flex bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-1">
+            {(["upload", "camera"] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setInputMode(mode)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl
+                  text-xs font-bold tracking-[0.15em] transition-all
+                  ${inputMode === mode
+                    ? "bg-[#1a1a1a] text-white"
+                    : "text-[#444] hover:text-[#666]"
+                  }`}
+              >
+                {mode === "upload" ? (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    動画をアップロード
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    リアルタイム解析
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── カメラモード ── */}
+      {!result && inputMode === "camera" && (
+        <div className="w-full max-w-2xl mx-auto px-4">
+          <CameraAnalyzer exercise={exercise} />
+        </div>
+      )}
+
       {/* ── Hero + Upload ── */}
-      <section className="min-h-screen flex items-center pt-20">
+      {inputMode === "upload" && <section className="min-h-screen flex items-center pt-20">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center py-16">
 
           {/* 左 */}
@@ -230,7 +275,7 @@ export default function Home() {
                   ) : (
                     <div className="mb-2">
                       <p className="text-[#666666] text-sm mb-1">動画をドラッグ＆ドロップ</p>
-                      <p className="text-[#1a1a1a] text-[11px] mt-2">MP4 / MOV  最大100MB</p>
+                      <p className="text-[#1a1a1a] text-[11px] mt-2">MP4 / MOV  最大200MB</p>
                     </div>
                   )}
                   <label className="block mt-5 mb-3 cursor-pointer">
@@ -303,52 +348,7 @@ export default function Home() {
             )}
           </div>
         </div>
-      </section>
-
-      {/* ── 入力モード切替 ── */}
-      {!result && (
-        <div className="w-full max-w-2xl mx-auto px-4 mb-6">
-          <div className="flex bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-1">
-            {(["upload", "camera"] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setInputMode(mode)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl
-                  text-xs font-bold tracking-[0.15em] transition-all
-                  ${inputMode === mode
-                    ? "bg-[#1a1a1a] text-white"
-                    : "text-[#444] hover:text-[#666]"
-                  }`}
-              >
-                {mode === "upload" ? (
-                  <>
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    動画をアップロード
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    リアルタイム解析
-                  </>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── カメラモード ── */}
-      {!result && inputMode === "camera" && (
-        <div className="w-full max-w-2xl mx-auto px-4">
-          <CameraAnalyzer exercise={exercise} />
-        </div>
-      )}
+      </section>}
 
       {/* ── 体型推定セクション（解析前に表示） ── */}
       {!result && (
