@@ -43,7 +43,7 @@ LANDMARK_3D_STRIDE  = int(os.getenv("LANDMARK_3D_STRIDE", "3"))
 # ── FastAPI ─────────────────────────────────────────────────
 app = FastAPI(
     title="Muscle Analyzer API",
-    version="0.5.0",
+    version="0.6.0",
     docs_url="/docs" if os.getenv("ENV", "development") == "development" else None,
     redoc_url=None,
 )
@@ -60,7 +60,16 @@ async def websocket_stream(
     """
     リアルタイムカメラ解析WebSocketエンドポイント
     ws://host/ws/stream?exercise=Squats
+
+    WebSocketはCORSMiddlewareが効かないので、
+    originチェックをここで行う。
     """
+    origin = websocket.headers.get("origin", "")
+    allowed = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")]
+    # localhost系は常に許可（開発環境）
+    if not any(origin.startswith(a) for a in allowed) and "localhost" not in origin:
+        await websocket.close(code=1008, reason="Origin not allowed")
+        return
     await websocket_stream_endpoint(websocket, exercise=exercise)
 
 # ── CORS ────────────────────────────────────────────────────
@@ -168,7 +177,7 @@ def _validate_image(file: UploadFile, content: bytes) -> None:
 @app.get("/health")
 def health():
     is_dev = os.getenv("ENV", "development") == "development"
-    base = {"status": "ok", "version": "0.5.0"}
+    base = {"status": "ok", "version": "0.6.0"}
     if is_dev:
         base["ml_available"] = _ml_available
         base["supported_exercises"] = list(MAPPING["exercise_muscle_mapping"].keys())
