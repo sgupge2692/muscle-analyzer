@@ -1,8 +1,14 @@
 """
-ST-GCN (Spatial Temporal Graph Convolutional Network)
+ST-GCN (Spatial Temporal Graph Convolutional Network) — 改善版
 論文: Yan et al., 2018 "Spatial Temporal Graph Convolutional Networks for Skeleton-Based Action Recognition"
 入力: (N, C, T, V) = (バッチ, 3, 30フレーム, 17関節)
 出力: (N, 20) = 20筋肉のマルチラベル確率
+
+改善点:
+  - ブロック数: 3→5 (64→64→128→128→256)
+  - TCN kernel_sizeを後半ほど細かく (9,9,7,7,5)
+  - 各ブロック末尾にSE-style Channel Attention追加
+  - 各ブロック末尾にDropout(0.1)追加（過学習抑制）
 """
 
 import torch
@@ -35,29 +41,66 @@ def build_edge_index(num_nodes: int = 17) -> torch.Tensor:
     return edge_index
 
 
-class STGCNBlock(nn.Module):
+class SEBlock(nn.Module):
     """
-    ST-GCNの基本ブロック
-    空間方向：GCN（関節間の関係）
-    時間方向：1D Conv（フレーム間の変化）
+    Squeeze-and-Excitation チャネルアテンション
+    重要なチャネルを強調・不要なチャネルを抑制する
     """
 
-    def __init__(self, in_channels: int, out_channels: int, stride: int = 1):
+    def __init__(self, channels: int, reduction: int = 8):
+        super().__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(channels, max(channels // reduction, 4)),
+            nn.ReLU(),
+            nn.Linear(max(channels // reduction, 4), channels),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: (N, C, T, V)
+        Returns:
+            (N, C, T, V) — チャネル方向に重み付け
+        """
+        # グローバル平均プーリングでチャネル統計量を計算
+        w = x.mean(dim=[2, 3])       # (N, C)
+        w = self.fc(w)               # (N, C) → Sigmoid
+        return x * w.unsqueeze(-1).unsqueeze(-1)  # ブロードキャスト
+
+
+class STGCNBlock(nn.Module):
+    """
+    ST-GCNの基本ブロック（改善版）
+    空間方向：GCN（関節間の関係）
+    時間方向：1D Conv（フレーム間の変化）
+    追加: SE Attention + Dropout
+    """
+
+    def __init__(self, in_channels: int, out_channels: int,
+                 stride: int = 1, tcn_kernel: int = 9, dropout: float = 0.1):
         super().__init__()
 
         # 空間方向のGCN
         self.gcn = GCNConv(in_channels, out_channels)
 
         # 時間方向の1D Conv
+        padding = tcn_kernel // 2
         self.tcn = nn.Sequential(
             nn.BatchNorm1d(out_channels),
             nn.ReLU(),
             nn.Conv1d(
                 out_channels, out_channels,
-                kernel_size=9, stride=stride, padding=4
+                kernel_size=tcn_kernel, stride=stride, padding=padding
             ),
             nn.BatchNorm1d(out_channels),
         )
+
+        # SE Attention（チャネルアテンション）
+        self.se = SEBlock(out_channels)
+
+        # Dropout（ブロック末尾）
+        self.dropout = nn.Dropout(dropout)
 
         # 残差接続
         if in_channels != out_channels or stride != 1:
@@ -104,12 +147,20 @@ class STGCNBlock(nn.Module):
         T_new = x.shape[-1]
         x = x.reshape(N, V, out_C, T_new).permute(0, 2, 3, 1)  # (N, out_C, T', V)
 
+        # SE Attention
+        x = self.se(x)
+
         # 残差接続
         res = res.permute(0, 3, 1, 2).reshape(N * V, C, T)
         res = self.residual(res)
         res = res.reshape(N, V, out_C, T_new).permute(0, 2, 3, 1)
 
-        return self.relu(x + res)
+        x = self.relu(x + res)
+
+        # Dropout
+        x = self.dropout(x)
+
+        return x
 
     @staticmethod
     def _expand_edge_index(edge_index: torch.Tensor, num_graphs: int, num_nodes: int) -> torch.Tensor:
@@ -123,8 +174,8 @@ class STGCNBlock(nn.Module):
 
 class STGCN(nn.Module):
     """
-    ST-GCN本体
-    3層のSTGCNBlockで特徴抽出 → Global Average Pooling → 分類
+    ST-GCN本体（改善版）
+    5層のSTGCNBlockで特徴抽出 → Global Average Pooling → 分類
     """
 
     def __init__(self, in_channels: int = 3, num_classes: int = 20, num_joints: int = 17):
@@ -135,17 +186,22 @@ class STGCN(nn.Module):
         # 入力正規化
         self.bn = nn.BatchNorm2d(in_channels)
 
-        # ST-GCNブロック（チャンネルを段階的に増やす）
+        # ST-GCNブロック（チャネルを段階的に増やす）
+        # TCNカーネルは後半ほど小さくして受容野を調整
         self.blocks = nn.ModuleList([
-            STGCNBlock(in_channels, 64),
-            STGCNBlock(64, 128),
-            STGCNBlock(128, 256),
+            STGCNBlock(in_channels,  64,  tcn_kernel=9, dropout=0.1),
+            STGCNBlock(64,           64,  tcn_kernel=9, dropout=0.1),
+            STGCNBlock(64,           128, tcn_kernel=7, dropout=0.1),
+            STGCNBlock(128,          128, tcn_kernel=7, dropout=0.1),
+            STGCNBlock(128,          256, tcn_kernel=5, dropout=0.1),
         ])
 
         # 分類ヘッド
         self.classifier = nn.Sequential(
             nn.Dropout(0.5),
-            nn.Linear(256, num_classes),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, num_classes),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

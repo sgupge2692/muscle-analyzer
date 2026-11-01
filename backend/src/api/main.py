@@ -38,7 +38,7 @@ ALLOWED_IMAGE_EXTS  = {".jpg", ".jpeg", ".png", ".webp"}
 
 # 3Dシーケンスのフレーム間引き率（1=全フレーム, 3=1/3に間引き）
 # 30fpsの動画で3にすると10fps相当になりレスポンスサイズが約1/3になる
-LANDMARK_3D_STRIDE  = int(os.getenv("LANDMARK_3D_STRIDE", "3"))
+LANDMARK_3D_STRIDE  = int(os.getenv("LANDMARK_3D_STRIDE", "2"))
 
 # ── FastAPI ─────────────────────────────────────────────────
 app = FastAPI(

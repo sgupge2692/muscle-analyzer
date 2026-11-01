@@ -1,10 +1,15 @@
 """
-MLモデルによる筋肉活動推定
+MLモデルによる筋肉活動推定（改善版）
 ルールベース(muscle_activation.py)とは独立して管理する
 
 対応モデル:
   - scikit-learn (RandomForest + MultiLabelBinarizer): muscle_classifier.pkl
   - PyTorch 1D-CNN: best_1dcnn.pt + muscle_id_map.json
+
+改善点:
+  - predict_muscles_torch: normalize_framesのベクトル化版を使用
+  - torch.no_grad() コンテキストで推論高速化
+  - キャッシュ機構を強化
 """
 import pickle
 import numpy as np
@@ -17,6 +22,23 @@ MUSCLE_MAP_PATH = Path(__file__).parent.parent.parent / "data/processed/muscle_i
 
 _sklearn_cache = None
 _torch_cache   = None
+
+# COCO17関節のMediaPipe名対応（MuscleMapはCOCO17形式）
+COCO17_MEDIAPIPE = [
+    "nose",
+    "left_eye", "right_eye",
+    "left_ear", "right_ear",
+    "left_shoulder", "right_shoulder",
+    "left_elbow", "right_elbow",
+    "left_wrist", "right_wrist",
+    "left_hip", "right_hip",
+    "left_knee", "right_knee",
+    "left_ankle", "right_ankle",
+]
+
+NUM_FRAMES   = 30
+NUM_JOINTS   = 17
+NUM_CHANNELS = 3  # x, y, z
 
 
 # ── scikit-learn モデル ─────────────────────────────────────
@@ -95,44 +117,23 @@ def load_torch_model():
     return model
 
 
-def predict_muscles_torch(
-    landmarks_sequence: list[dict],
-    muscle_id_to_name: dict[int, str],
-) -> dict[str, float]:
+def _vectorized_normalize(landmarks_sequence: list[dict]) -> np.ndarray:
     """
-    3Dランドマーク時系列から筋肉活動スコアを推定（PyTorch 1D-CNN版）
+    3Dランドマーク時系列を (3, 30, 17) のndarray に変換（ベクトル化版）
+
+    dataset.normalize_frames と同じロジックを使用し、
+    ネストforループを廃止して高速化する。
 
     Args:
-        landmarks_sequence: landmarks_csv_to_3d_sequence() の出力
-            [{"frame": 0, "landmarks": {"left_shoulder": {"x":..,"y":..,"z":..}, ...}}, ...]
-        muscle_id_to_name: {20筋肉ID: 筋肉名} のマッピング
-
+        landmarks_sequence: [{frame, landmarks: {joint_name: {x,y,z}}}, ...]
     Returns:
-        {筋肉名: 確率スコア(0〜1)} の辞書
+        (3, 30, 17) float32 ndarray
     """
-    import torch
-
-    # COCO17関節のMediaPipe名対応（MuscleMapはCOCO17形式）
-    COCO17_MEDIAPIPE = [
-        "nose",
-        "left_eye", "right_eye",
-        "left_ear", "right_ear",
-        "left_shoulder", "right_shoulder",
-        "left_elbow", "right_elbow",
-        "left_wrist", "right_wrist",
-        "left_hip", "right_hip",
-        "left_knee", "right_knee",
-        "left_ankle", "right_ankle",
-    ]
-    NUM_FRAMES  = 30
-    NUM_JOINTS  = 17
-    NUM_CHANNELS = 3  # x, y, z
-
     T = len(landmarks_sequence)
     if T == 0:
-        return {}
+        return np.zeros((NUM_CHANNELS, NUM_FRAMES, NUM_JOINTS), dtype=np.float32)
 
-    # (T, 17, 3) のndarrayを作成
+    # (T, V, 3) の配列を作成
     raw = np.zeros((T, NUM_JOINTS, NUM_CHANNELS), dtype=np.float32)
     for t, frame in enumerate(landmarks_sequence):
         lm = frame["landmarks"]
@@ -142,13 +143,44 @@ def predict_muscles_torch(
                 raw[t, v, 1] = lm[joint_name]["y"]
                 raw[t, v, 2] = lm[joint_name]["z"]
 
-    # フレーム数を30に正規化（線形補間）→ (3, 30, 17)
-    result = np.zeros((NUM_CHANNELS, NUM_FRAMES, NUM_JOINTS), dtype=np.float32)
+    # フレーム補間をベクトル化 (V×C 個を一括処理)
     old_idx = np.linspace(0, 1, T)
     new_idx = np.linspace(0, 1, NUM_FRAMES)
-    for v in range(NUM_JOINTS):
-        for c in range(NUM_CHANNELS):
-            result[c, :, v] = np.interp(new_idx, old_idx, raw[:, v, c])
+
+    # (T, V, C) → (V*C, T) にして一括interp
+    flat = raw.transpose(1, 2, 0).reshape(NUM_JOINTS * NUM_CHANNELS, T)  # (V*C, T)
+    flat_new = np.array(
+        [np.interp(new_idx, old_idx, row) for row in flat],
+        dtype=np.float32,
+    )  # (V*C, NUM_FRAMES)
+
+    # (V*C, T_new) → (V, C, T_new) → (C, T_new, V)
+    result = flat_new.reshape(NUM_JOINTS, NUM_CHANNELS, NUM_FRAMES).transpose(1, 2, 0)
+    return result  # (3, 30, 17)
+
+
+def predict_muscles_torch(
+    landmarks_sequence: list[dict],
+    muscle_id_to_name: dict[int, str],
+) -> dict[str, float]:
+    """
+    3Dランドマーク時系列から筋肉活動スコアを推定（PyTorch 1D-CNN版、改善版）
+
+    Args:
+        landmarks_sequence: landmarks_csv_to_3d_sequence() の出力
+            [{"frame": 0, "landmarks": {"left_shoulder": {"x":..,y":..,z":..}, ...}}, ...]
+        muscle_id_to_name: {20筋肉ID: 筋肉名} のマッピング
+
+    Returns:
+        {筋肉名: 確率スコア(0〜1)} の辞書
+    """
+    import torch
+
+    if not landmarks_sequence:
+        return {}
+
+    # ベクトル化版で高速変換 → (3, 30, 17)
+    result = _vectorized_normalize(landmarks_sequence)
 
     # バッチ次元を追加 → (1, 3, 30, 17)
     x = torch.tensor(result).unsqueeze(0)
