@@ -14,7 +14,23 @@ ST-GCN (Spatial Temporal Graph Convolutional Network) — 改善版
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
+# torch_geometric不要の自前GCN実装\uff08Kipf & Welling 2017\uff09
+class GCNConv(nn.Module):
+    """スパースグラフ畳み込み層\uff08torch_geometric不要版\uff09"""
+    def __init__(self, in_channels: int, out_channels: int):
+        super().__init__()
+        self.linear = nn.Linear(in_channels, out_channels, bias=True)
+        nn.init.xavier_uniform_(self.linear.weight)
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        N = x.size(0)
+        row, col = edge_index[0], edge_index[1]
+        deg = torch.zeros(N, device=x.device).scatter_add(0, row, torch.ones(row.size(0), device=x.device))
+        deg_inv_sqrt = deg.pow(-0.5).clamp(max=10.0)
+        norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
+        agg = torch.zeros_like(x)
+        agg.scatter_add_(0, col.unsqueeze(1).expand(-1, x.size(1)), x[row] * norm.unsqueeze(1))
+        return self.linear(agg + x)
 import numpy as np
 
 
