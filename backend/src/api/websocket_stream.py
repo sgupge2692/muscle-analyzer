@@ -24,7 +24,8 @@ from mediapipe.tasks.python import vision as mp_vision
 
 logger = logging.getLogger("muscle_analyzer.ws")
 
-MODEL_PATH    = "src/pose/pose_landmarker.task"
+from pathlib import Path as _Path
+MODEL_PATH = str(_Path(__file__).resolve().parent.parent / "pose" / "pose_landmarker.task")
 FRAME_HISTORY = 30   # 筋肉活動推定に使うフレーム数
 TARGET_WIDTH  = 480  # 処理解像度（小さいほど速い）
 
