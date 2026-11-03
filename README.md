@@ -1,165 +1,158 @@
-# 💪 Muscle Analyzer
+# 🏋️ Muscle Analyzer
 
-> **筋トレ動画における骨格推定と解剖学モデルを用いた筋肉動態可視化システムの開発**
+筋トレ動画の解析による**筋肉動態の可視化とフォーム矯正**DXツール
 
-単眼カメラの映像から、どの筋肉が「いつ・どれだけ」収縮・伸展しているかをリアルタイムで推定し、ヒートマップとして可視化する Web アプリ。卒業研究（佐賀大学・中山研 2026〜2027 年度）として実施。
+[![Next.js](https://img.shields.io/badge/Next.js-16.4.3-black)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)](https://fastapi.tiangolo.com/)
+[![MediaPipe](https://img.shields.io/badge/MediaPipe-1.1.1-blue)](https://mediapipe.dev/)
+[![License](https://img.shields.io/badge/License-Academic-orange)](./backend/EULA_1.pdf)
 
----
+## 概要
 
-## 🎯 プロジェクト概要
+単眼カメラ映像（動画アップロード or リアルタイムカメラ）から骨格を推定し、  
+どの筋肉がどれだけ活動しているかを20筋群のヒートマップで可視化します。
 
-### 背景と課題
-- 日本のフィットネス市場は約 **5,000 億円**（経産省 2022 年度）に拡大。自宅トレーニーが急増
-- ジム利用者の約 **60%** が「正しいフォームがわからない」と回答（日本健康スポーツ連盟 2022 年）
-- 既存の姿勢解析ツールは関節角度・フォーム分類どまり。**「どの筋肉が使われているか」の可視化に至っていない**
-- パーソナルトレーナー指導は 1 回 5,000〜15,000 円のコスト障壁
+### 主な機能
 
-### 提案手法
-- MediaPipe Pose Landmarker で 33 点骨格を 3D 推定
-- 解剖学ルールベース ＋ 時系列深層学習（1D-CNN / ST-GCN）のハイブリッドで筋活動を推定
-- Next.js フロントエンド上に **筋肉ヒートマップ** としてリアルタイム可視化
+| 機能 | 説明 |
+|------|------|
+| 🎥 動画アップロード解析 | MP4/MOV（最大200MB）をアップロードしてレップごとに解析 |
+| 📹 リアルタイム解析 | WebSocketでカメラ映像をストリーミング解析 |
+| 💪 筋肉活動ヒートマップ | 20筋群の活動強度を体表マップで可視化 |
+| 🦴 3Dアバタービューア | カプセル人体モデルで任意視点から動きを確認 |
+| 📐 フォームチェック | 関節角度と理想範囲を比較してエラー/警告を表示 |
+| 👤 体型推定 | 正面写真から肩幅・骨盤幅・骨格比率を推定し精度向上 |
+| 🔐 認証 | JWT + bcrypt(cost=12)によるセキュアなユーザー管理 |
 
-### 新規性の核心
-1. **解釈可能な可視化** — 解剖学モデルに基づき「どの筋肉・なぜ」を提示
-2. **スマートフォン 1 台完結** — 専用センサ・実験環境不要
-3. **筋トレ種目特化** — スクワット・デッドリフトから開始し種目ライブラリを拡張
+### 対応種目（141種目）
 
-### 成功判定基準
-| 指標 | 目標値 |
-|------|--------|
-| 筋肉活動分類 F1 micro（スクワット・デッドリフト） | **0.93 以上** |
-| 専門家（理学療法士・トレーナー）による妥当性評価 | **5 段階で 4.0 以上** |
+スクワット、デッドリフト、ルーマニアンDL、ランジ、プッシュアップ、ベンチプレス、スクワットホールドなど
 
 ---
 
-## 🏗️ システム構成
+## 技術スタック
 
-```
-[スマートフォン / ブラウザ]
-       │ 動画アップロード
-       ▼
-[Next.js フロントエンド] ──── REST API ────▶ [FastAPI バックエンド]
-  - Canvas API でヒートマップ描画                │
-  - Tailwind CSS / TypeScript              ├─ MediaPipe Pose Landmarker
-                                           ├─ 解剖学ルールベースモジュール
-                                           ├─ 1D-CNN / ST-GCN モデル
-                                           └─ Supabase（ユーザ・履歴管理）
-```
+### フロントエンド
+- **Next.js 16.4.3** + TypeScript + Tailwind CSS v4
+- Canvas API（ヒートマップ・3Dアバター描画）
+- WebRTC + WebSocket（リアルタイムカメラ解析）
+- Vercel（ホスティング）
 
----
+### バックエンド
+- **FastAPI 0.115** + Python 3.12+
+- **MediaPipe 1.1.1**（骨格検出・33点3D座標）
+- NumPy / pandas / scikit-learn / PyTorch
+- bcrypt（パスワードハッシュ化）
+- Railway（ホスティング）
 
-## 🗂️ ディレクトリ構成
-
-```
-muscle-analyzer/
-├── frontend/                   # Next.js + TypeScript + Tailwind
-├── backend/
-│   ├── src/
-│   │   ├── pose/               # MediaPipe 骨格推定
-│   │   │   ├── detect_pose.py
-│   │   │   └── extract_landmarks.py
-│   │   ├── anatomy/            # 解剖学モデル・筋活動推定
-│   │   │   ├── knee_angle.py
-│   │   │   ├── muscle_activation.py
-│   │   │   ├── angle_features.py
-│   │   │   ├── rep_detector.py
-│   │   │   ├── squat_analysis.py
-│   │   │   ├── musclemap_features.py
-│   │   │   └── ml_predictor.py
-│   │   ├── ml/                 # 機械学習モデル
-│   │   │   ├── dataset.py
-│   │   │   ├── model.py
-│   │   │   └── train.py
-│   │   ├── visualization/      # ヒートマップ描画
-│   │   │   └── heatmap_renderer.py
-│   │   └── api/                # FastAPI エンドポイント
-│   │       └── main.py
-│   ├── data/
-│   │   ├── muscle_mapping.json # 137 種目 × 20 筋群 独自アノテーション
-│   │   └── processed/          # 中間出力（可視化・特徴量）
-│   ├── notebooks/              # 探索・検証用 Jupyter
-│   ├── requirements.txt
-│   └── Dockerfile
-├── docs/
-│   └── 研究計画書_v5.md
-└── README.md
-```
+### 機械学習
+- **1D-CNN**（Conv 3層 32→64→128ch、MLP 512→256）
+- **ST-GCN**（5ブロック 64→64→128→128→256、SE-Attention）
+- MuscleMapデータセット（学術研究限定・EULA署名済み）
 
 ---
 
-## 🛠️ 技術スタック
+## セットアップ
 
-| レイヤ | 技術 |
-|--------|------|
-| フロントエンド | Next.js / TypeScript / Tailwind CSS / Canvas API |
-| バックエンド | Python 3.11 / FastAPI / OpenCV / MediaPipe |
-| 機械学習 | scikit-learn → PyTorch（1D-CNN / ST-GCN） |
-| データ | NumPy / pandas / Jupyter |
-| インフラ | Docker / Vercel / Railway / Supabase |
-| データセット | MuscleMap（学術研究限定・EULA 署名済み）/ Free Exercise DB |
-
----
-
-## 🗺️ ロードマップ
-
-### Phase 0 — 基盤構築（2026 年 10 月 ✅ 完了）
-- [x] MediaPipe 骨格検出パイプライン
-- [x] 関節角度算出（膝角度・レップ検出）
-- [x] MuscleMap データセット統合・特徴量抽出
-- [x] 137 種目 × 20 筋群 独自マッピング JSON 作成
-
-### Phase 1 — ルールベース MVP（2026 年 11〜12 月）
-- [ ] 解剖学モデル（スクワット主要筋群）のルールベース推定
-- [ ] ヒートマップ可視化 HTML 出力
-- [ ] 研究計画書完成・発表（12 月）
-
-### Phase 2 — ML モデル統合（2027 年 1〜3 月）
-- [ ] scikit-learn による分類モデル実装
-- [ ] MuscleMap 特徴量との統合評価
-- [ ] FastAPI REST API 化
-
-### Phase 3 — Web アプリ MVP（2027 年 4〜6 月）
-- [ ] Next.js フロントエンド実装
-- [ ] Supabase 認証・履歴管理
-- [ ] デプロイ（Vercel + Railway）
-
-### Phase 4 — 精度向上・論文（2027 年 7〜1 月）
-- [ ] 1D-CNN / ST-GCN 実装・評価実験
-- [ ] 専門家評価・ユーザスタディ
-- [ ] 卒業論文執筆 → 2 月発表
-
----
-
-## ⚠️ ライセンス・データ利用上の注意
-
-- **MuscleMap データセット**：学術研究限定（EULA 署名済み 2026-10-11）。再配布・商用利用・公開環境への配置は不可。`data/raw/musclemap_benchmark/` は `.gitignore` 済み
-- **製品フェーズ**：Free Exercise DB（Unlicense）＋ 自前収集データで構成予定
-- `data/muscle_mapping.json`（独自アノテーション）は商用 OK の自前資産
-
----
-
-## 🚀 セットアップ
+### バックエンド
 
 ```bash
-# バックエンド
 cd backend
+
+# Python 3.12+ 推奨（macOS: brew install python@3.13）
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 
 # 環境変数
 cp .env.example .env
+# JWT_SECRET を必ず変更してください
+# python3 -c "import secrets; print(secrets.token_hex(32))"
 
-# API 起動
-uvicorn src.api.main:app --reload
+# 起動
+uvicorn src.api.main:app --reload --port 8000
+```
+
+### フロントエンド
+
+```bash
+cd frontend
+npm install
+
+# 環境変数
+cp .env.local.example .env.local
+# NEXT_PUBLIC_API_URL にバックエンドURLを設定
+
+npm run dev
+```
+
+ブラウザで `http://localhost:3000` を開く
+
+---
+
+## API
+
+| エンドポイント | メソッド | 説明 |
+|--------------|---------|------|
+| `/health` | GET | ヘルスチェック |
+| `/analyze` | POST | 動画解析（最大200MB） |
+| `/estimate_body` | POST | 体型推定（正面写真） |
+| `/ws/stream` | WebSocket | リアルタイムカメラ解析 |
+| `/auth/register` | POST | ユーザー登録 |
+| `/auth/login` | POST | ログイン（JWT発行） |
+| `/auth/me` | GET | 現在のユーザー情報 |
+
+### /analyze パラメータ
+
+```
+file:         動画ファイル（multipart/form-data）
+exercise:     種目名（例: Squats, Deadlift）
+target_angle: 目標膝角度（40〜170、デフォルト110）
+frame_skip:   フレームスキップ数（1=全フレーム、2=1/2、デフォルト2）
+body_scale:   体格スケール係数（0.5〜2.0、/estimate_bodyから取得）
+ml_mode:      ML推論モード（true/false）
 ```
 
 ---
 
-## 📄 参考文献
+## デプロイ
 
-- Bazarevsky et al. (2020). BlazePose. CVPR Workshop.
-- Cao et al. (2017). OpenPose. CVPR.
-- Chiquier & Vondrick (2023). Muscles in Action. ICCV.
-- Appiah (2024). Mobile-Phone Pose Estimation for Gym-Exercise Form Correction. VISIGRAPP.
-- Helmy et al. (2024). PoseRight. MIUCC.
-- Zhu et al. (2025). 3D Human Pose Estimation with Muscles. NeurIPS.
-- Chen et al. (2026). Pose2Muscle. arXiv:2609.18336.
+### Railway（バックエンド）
+
+1. `railway.app` でプロジェクト作成
+2. GitHub リポジトリを接続、**Root Directory を `backend` に設定**
+3. 環境変数を設定：
+
+```
+JWT_SECRET=<32文字以上のランダム文字列>
+ENV=production
+ALLOWED_ORIGINS=https://your-app.vercel.app
+MAX_FILE_SIZE_MB=200
+```
+
+### Vercel（フロントエンド）
+
+1. `vercel.com` でプロジェクト作成
+2. **Root Directory を `frontend` に設定**
+3. 環境変数を設定：
+
+```
+NEXT_PUBLIC_API_URL=https://your-app.railway.app
+NEXT_PUBLIC_WS_URL=wss://your-app.railway.app
+```
+
+---
+
+## ライセンス・利用制限
+
+- フロントエンド・バックエンドのコード：研究・個人利用可
+- **MuscleMapデータセット**：学術研究限定（EULAに従い再配布・商用利用禁止）
+- 商用フェーズは Free Exercise DB（Unlicense）＋自前収集データで構成
+
+---
+
+## 研究情報
+
+佐賀大学理工学部 中山研究室（卒業研究 2026年度）  
+研究テーマ：筋トレ動画の解析による筋肉動態の可視化とフォーム矯正  
+研究計画書：[docs/研究計画書_v7.md](./docs/研究計画書_v7.md)
