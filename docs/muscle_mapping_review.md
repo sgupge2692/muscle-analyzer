@@ -88,3 +88,49 @@ Pike_push-up:       [Chest, Shoulder, Triceps, Upper_Back, Upper_Abs, Lower_Abs,
 - Escamilla, R.F. (2001). Knee biomechanics of the dynamic squat exercise. *Medicine & Science in Sports & Exercise*, 33(1), 127-141.
 - Contreras, B., et al. (2015). A biomechanical analysis of the Romanian, 45-degree, and lying prone hip extension exercises. *Strength & Conditioning Journal*.
 - Lehman, G.J. (2005). The influence of grip width and forearm pronation/supination on upper-body myoelectric activity during the flat bench press. *Journal of Strength and Conditioning Research*, 19(3), 587-591.
+
+
+---
+
+## 追加レビュー（2026-11-04）
+
+### Pull_ups のマッピングが空だった問題
+
+**発見**: `Pull_ups` の `exercise_muscle_mapping` が空リスト `[]` になっていた
+
+**修正内容**:
+```json
+"Pull_ups": [2, 3, 5, 6, 7]
+```
+→ Shoulder(2), Biceps(3), Forearms(5), Upper_Back(6), Latissimus(7)
+
+**根拠**: Youdas et al. 2010 「Muscle Activation During Push-Up and Pull-Up Exercises」
+- 広背筋（Latissimus）が最大EMG活動（40%MVC以上）
+- 上腕二頭筋（Biceps）が補助として25%MVC
+- 僧帽筋中部（Upper_Back）が肩甲骨安定化
+
+### Deadlift に Quadriceps が不足していた問題
+
+**修正内容**: Quadriceps(13) を追加
+```json
+"Deadlift": [6, 7, 11, 13, 17, ...]
+```
+
+**根拠**: Escamilla et al. 2000 「Biomechanics of the Knee During Closed Kinetic Chain Exercises」
+- デッドリフトの引き上げ初期フェーズで膝関節の伸展力（Quadriceps）が必要
+- 特に床から腰の高さまでの区間で顕著
+
+### Bench_Press に Forearms を追加
+
+**根拠**: Barnett et al. 1995 「Effects of Variations of the Bench Press Exercise on the EMG Activity of Five Shoulder Muscles」
+- バーを把持する際の前腕筋（Forearms）の等尺性収縮が確認されている
+
+### 現状の未検討事項
+
+| 種目 | 未検討の問題 |
+|------|-------------|
+| `Lateral_Raises` | Shoulder の活動比率が要検証 |
+| `Hip_Thrust` | Gluteus最大活動種目だが詳細マッピング未確認 |
+| `Cable_Curl` | Biceps偏重か否か要確認 |
+
+次のレビュー予定: MuscleMapの実際の筋電図データと照合（Kunyuさんからの正式ラベル待ち）
