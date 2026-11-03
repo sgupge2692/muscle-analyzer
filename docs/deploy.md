@@ -1,112 +1,94 @@
-# デプロイ手順書
+# デプロイ手順
 
-## 構成
-
-```
-GitHub (sgupge2692/muscle-analyzer)
-├── frontend/ → Vercel（自動デプロイ）
-└── backend/  → Railway（Dockerコンテナ）
-```
-
-## 1. バックエンド（Railway）
+## バックエンド（Railway）
 
 ### 初回セットアップ
 
-1. https://railway.app にアクセス → GitHubでログイン
-2. 「New Project」→「Deploy from GitHub repo」→ `muscle-analyzer` を選択
-3. 「Add Service」→「GitHub Repo」→ Root Directory を `backend/` に設定
-4. 環境変数を設定（Variables タブ）:
+1. [railway.app](https://railway.app) にGitHubでログイン
+2. **New Project** → **Deploy from GitHub repo** → `sgupge2692/muscle-analyzer`
+3. **Add Service** → **GitHub Repo**
+4. Settings → **Root Directory** を `backend` に設定（必須）
+5. RailwayがDockerfileを自動検出してビルド開始
+
+### 環境変数（Variables タブで設定）
 
 ```
 ENV=production
-ALLOWED_ORIGINS=https://your-app.vercel.app  # 後でVercelのURLに変更
-MAX_FILE_SIZE_MB=100
+JWT_SECRET=<python3 -c "import secrets; print(secrets.token_hex(32))" で生成>
+ALLOWED_ORIGINS=https://your-app.vercel.app
+MAX_FILE_SIZE_MB=200
+LANDMARK_3D_STRIDE=2
+USERS_DB_PATH=data/users.json
 ```
-
-5. 「Deploy」→ ログを確認
-6. 発行されたURL（例: `https://muscle-analyzer-production.up.railway.app`）をメモ
-
-### 再デプロイ
-`git push origin main` するだけで自動デプロイ
 
 ### ヘルスチェック確認
+
+デプロイ後、発行されたURLで確認：
 ```bash
-curl https://your-backend.railway.app/health
+curl https://your-app.railway.app/health
+# → {"status":"ok","version":"0.6.0"}
 ```
+
+### ビルド時間の目安
+
+- 初回：10〜15分（MediaPipe等の重いパッケージのビルド）
+- 2回目以降：3〜5分（Dockerレイヤーキャッシュ）
 
 ---
 
-## 2. フロントエンド（Vercel）
+## フロントエンド（Vercel）
 
 ### 初回セットアップ
 
-1. https://vercel.com にアクセス → GitHubでログイン
-2. 「Add New Project」→ `muscle-analyzer` を選択
-3. 設定:
-   - **Root Directory**: `frontend`
-   - **Framework Preset**: Next.js（自動検出）
-4. 環境変数を設定:
+1. [vercel.com](https://vercel.com) にGitHubでログイン
+2. **New Project** → `sgupge2692/muscle-analyzer` をインポート
+3. **Root Directory** を `frontend` に設定
+4. Framework Preset: **Next.js**（自動検出）
+
+### 環境変数（Environment Variables で設定）
 
 ```
-NEXT_PUBLIC_API_URL=https://your-backend.railway.app  # Railwayで発行されたURL
+NEXT_PUBLIC_API_URL=https://your-app.railway.app
+NEXT_PUBLIC_WS_URL=wss://your-app.railway.app
 ```
 
-5. 「Deploy」
-6. 発行されたURL（例: `https://muscle-analyzer.vercel.app`）をメモ
+### 注意事項
 
-### デプロイ後の追加作業
-
-RailwayのALLOWED_ORIGINSをVercelのURLに更新:
-```
-ALLOWED_ORIGINS=https://muscle-analyzer.vercel.app
-```
-
-### 再デプロイ
-`git push origin main` するだけで自動デプロイ
+- `wss://`（WebSocket Secure）を使うこと（`ws://`は本番では動かない）
+- Railwayのデプロイが完了してからVercelに設定すること
 
 ---
 
-## 3. ローカル開発
+## ローカル開発
 
 ```bash
 # バックエンド
 cd backend
-cp .env.example .env         # 初回のみ
 source ../.venv/bin/activate
 uvicorn src.api.main:app --reload --port 8000
 
 # フロントエンド（別タブ）
 cd frontend
-cp .env.local.example .env.local  # 初回のみ
 npm run dev
+```
+
+### macOS Tahoe（26.x）での注意
+
+Python 3.13で `.venv` を作成すること（3.12はensurepipが壊れている場合あり）：
+
+```bash
+/opt/homebrew/bin/python3.13 -m venv .venv --without-pip
+# pipを手動インストール後
+.venv/bin/python -m pip install -r requirements.txt
 ```
 
 ---
 
-## 4. 環境変数一覧
+## よくあるエラー
 
-### バックエンド（Railway）
-| 変数名 | 説明 | デフォルト |
-|--------|------|-----------|
-| `ENV` | 実行環境（development/production） | development |
-| `ALLOWED_ORIGINS` | CORSで許可するURL | http://localhost:3000 |
-| `MAX_FILE_SIZE_MB` | アップロード上限（MB） | 100 |
-| `PORT` | Railwayが自動設定 | 8000 |
-
-### フロントエンド（Vercel）
-| 変数名 | 説明 | デフォルト |
-|--------|------|-----------|
-| `NEXT_PUBLIC_API_URL` | バックエンドAPIのURL | http://localhost:8000 |
-
----
-
-## 5. トラブルシューティング
-
-### CORSエラーが出る
-→ RailwayのALLOWED_ORIGINSにVercelのURLが入っているか確認
-
-### Railway でビルドが失敗する
-→ ログを確認。`libgl1-mesa-glx` が見つからない場合はDockerfileのaptパッケージを確認
-
-### Vercel でビルドが失敗する
-→ `frontend/` がRoot Directoryに設定されているか確認
+| エラー | 原因 | 解決策 |
+|--------|------|--------|
+| `413 ファイルサイズが上限を超えています` | 動画が200MB超 | ffmpegで短く切る |
+| `WebSocket接続失敗` | CORS設定またはorigin不一致 | ALLOWED_ORIGINSを確認 |
+| `MLモデルロード失敗` | `.pkl`ファイルなし | 初回はルールベースのみで動作 |
+| `pose_landmarker.task not found` | モデルファイルの配置ミス | `backend/src/pose/`に配置されているか確認 |
