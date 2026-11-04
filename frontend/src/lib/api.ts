@@ -59,3 +59,105 @@ export async function estimateBody(
   }
   return res.json();
 }
+
+// ── 認証API ────────────────────────────────────────────────
+
+export type AuthToken = {
+  access_token: string;
+  token_type:   string;
+  expires_in:   number;
+};
+
+export type UserProfile = {
+  id:    string;
+  email: string;
+  name:  string;
+};
+
+export async function register(
+  email: string,
+  password: string,
+  name: string = "",
+): Promise<AuthToken> {
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, name }),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail ?? `登録エラー: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function login(
+  email: string,
+  password: string,
+): Promise<AuthToken> {
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail ?? `ログインエラー: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getMe(token: string): Promise<UserProfile> {
+  const res = await fetch(`${API_URL}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("認証が必要です");
+  return res.json();
+}
+
+export async function refreshToken(token: string): Promise<AuthToken> {
+  const res = await fetch(`${API_URL}/auth/refresh`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("トークン更新失敗");
+  return res.json();
+}
+
+export async function changePassword(
+  token: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const res = await fetch(`${API_URL}/auth/change-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password:     newPassword,
+    }),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail ?? "パスワード変更失敗");
+  }
+}
+
+// トークンをlocalStorageで管理するユーティリティ
+export const TokenStore = {
+  get:    ()          => localStorage.getItem("ma_token"),
+  set:    (t: string) => localStorage.setItem("ma_token", t),
+  clear:  ()          => localStorage.removeItem("ma_token"),
+  isValid: (token: string | null): boolean => {
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return payload.exp * 1000 > Date.now() + 60_000; // 1分の余裕
+    } catch {
+      return false;
+    }
+  },
+};
