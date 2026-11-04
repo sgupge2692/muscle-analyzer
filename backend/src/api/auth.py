@@ -247,3 +247,59 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         email=current_user["email"],
         name=current_user.get("name", ""),
     )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(current_user: dict = Depends(get_current_user)):
+    """
+    アクセストークンを更新する（有効なトークンが必要）
+
+    クライアントはトークン期限切れ前にこのエンドポイントを叩き、
+    新しいトークンを取得する。
+    """
+    token = create_access_token(current_user["id"], current_user["email"])
+    logger.info(f"トークン更新: {current_user['email']}")
+    return TokenResponse(access_token=token)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password:     str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("パスワードは8文字以上にしてください")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("パスワードに数字を1文字以上含めてください")
+        if not any(c.isalpha() for c in v):
+            raise ValueError("パスワードに英字を1文字以上含めてください")
+        return v
+
+
+@router.post("/change-password", status_code=200)
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """パスワードを変更する（現在のパスワード確認が必要）"""
+    if not _verify_password(body.current_password, current_user["password"]):
+        raise HTTPException(401, "現在のパスワードが間違っています")
+
+    users = _load_users()
+    users[current_user["id"]]["password"] = _hash_password(body.new_password)
+    _save_users(users)
+    logger.info(f"パスワード変更: {current_user['email']}")
+    return {"message": "パスワードを変更しました"}
+
+
+@router.delete("/account", status_code=200)
+async def delete_account(current_user: dict = Depends(get_current_user)):
+    """アカウントを削除する"""
+    users = _load_users()
+    if current_user["id"] in users:
+        del users[current_user["id"]]
+        _save_users(users)
+    logger.info(f"アカウント削除: {current_user['email']}")
+    return {"message": "アカウントを削除しました"}
