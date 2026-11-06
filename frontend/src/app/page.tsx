@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AnalyzeResult } from "@/types/analysis";
 import { analyzeVideo } from "@/lib/api";
 import { ResultPanel } from "@/components/ResultPanel";
 import { BodyEstimator } from "@/components/BodyEstimator";
 import { CameraAnalyzer } from "@/components/CameraAnalyzer";
+import { AuthModal } from "@/components/AuthModal";
+import { TokenStore, getMe, type UserProfile } from "@/lib/api";
 import { BodyEstimation } from "@/lib/api";
 
 const PROGRESS_STEPS = [
@@ -43,6 +45,16 @@ export default function Home() {
   const [bodyData, setBodyData]         = useState<BodyEstimation | null>(null);
   const [showBodyEstimator, setShowBodyEstimator] = useState(false);
   const [inputMode, setInputMode] = useState<"upload" | "camera">("upload");
+  const [user,         setUser]         = useState<UserProfile | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // 起動時にトークンをチェックしてユーザー情報を取得
+  useEffect(() => {
+    const token = TokenStore.get();
+    if (token && TokenStore.isValid(token)) {
+      getMe(token).then(setUser).catch(() => TokenStore.clear());
+    }
+  }, []);
   const timerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   function startFakeProgress() {
@@ -108,7 +120,27 @@ export default function Home() {
           <div className="w-2 h-2 rounded-full bg-red-500" />
           <span className="text-sm font-bold tracking-[0.15em]">MUSCLE ANALYZER</span>
         </div>
-        <span className="text-[10px] text-[#2a2a2a] tracking-[0.3em] font-medium">BETA</span>
+        <div className="flex items-center gap-3">
+          {user ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-[#555] tracking-wider">{user.email}</span>
+              <button
+                onClick={() => { TokenStore.clear(); setUser(null); }}
+                className="text-[9px] text-[#444] hover:text-[#666] transition-colors"
+              >
+                ログアウト
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="text-[10px] text-[#444] hover:text-white transition-colors tracking-wider"
+            >
+              ログイン
+            </button>
+          )}
+          <span className="text-[10px] text-[#2a2a2a] tracking-[0.3em] font-medium">BETA</span>
+        </div>
       </nav>
 
       {/* ── 入力モード切替 ── */}
