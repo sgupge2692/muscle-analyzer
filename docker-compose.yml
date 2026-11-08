@@ -1,0 +1,26 @@
+# 開発用 Docker Compose（バックエンドのみ）
+# フロントエンドは `cd frontend && npm run dev` で起動する（macOSではネイティブの方が速い）。
+# 本番(Railway)は backend/Dockerfile をそのまま使う。このファイルは開発専用。
+#
+#   docker compose up --build   # 初回・requirements.txt変更時
+#   docker compose up           # 2回目以降
+#   docker compose down         # 停止
+#   docker compose logs -f backend
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env            # JWT_SECRET など（gitignore済み・イメージには含めない）
+    environment:
+      ENV: development
+      ALLOWED_ORIGINS: http://localhost:3000
+    volumes:
+      # コードの変更を即反映（--reload が検知する）
+      - ./backend/src:/app/src
+      # muscle_mapping.json・学習済みモデル・ローカルのusers.json・MuscleMapデータ。
+      # イメージに焼き込まず、手元のフォルダをマウントする
+      # （MuscleMapは学術研究限定。イメージに含めてレジストリへpushしないこと）
+      - ./backend/data:/app/data
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
