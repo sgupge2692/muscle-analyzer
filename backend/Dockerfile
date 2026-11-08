@@ -3,8 +3,8 @@
 # Railway / 本番用
 # ────────────────────────────────────────────────
 
-# Python 3.11 slim（軽量）
-FROM python:3.11-slim
+# Python 3.13 slim（軽量）。numpy 2.5 / scipy 1.18 が Python 3.12+ を要求するため 3.11 は不可
+FROM python:3.13-slim
 
 WORKDIR /app
 
