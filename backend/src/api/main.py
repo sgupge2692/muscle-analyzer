@@ -10,6 +10,22 @@ import pandas as pd
 
 sys.path.append(str(Path(__file__).parent.parent))
 
+def _load_dotenv() -> None:
+    """backend/.env があれば読み込む（python-dotenv不要の簡易版・既存の環境変数は上書きしない）"""
+    env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    if not env_path.exists():
+        return
+    for raw in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+_load_dotenv()  # auth.py が import 時に JWT_SECRET を読むため、他のimportより前に実行
+
+
 from pose.extract_landmarks import extract_landmarks, landmarks_csv_to_3d_sequence
 from anatomy.angle_features import compute_angle_features
 from anatomy.rep_detector import load_knee_angles, detect_reps
