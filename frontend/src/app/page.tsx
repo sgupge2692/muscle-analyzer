@@ -416,6 +416,25 @@ export default function Home() {
           onReset={handleReset}
         />
       )}
+      {/* ── 認証モーダル ── */}
+      {showAuthModal && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={e => { if (e.target === e.currentTarget) setShowAuthModal(false); }}
+        >
+          <div className="w-full max-w-md">
+            <AuthModal onSuccess={(token) => {
+              getMe(token.access_token).then(u => { setUser(u); setShowAuthModal(false); });
+            }} />
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="mt-4 w-full text-xs text-[#444] hover:text-[#666] transition-colors"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
