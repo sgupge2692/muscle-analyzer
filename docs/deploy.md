@@ -21,6 +21,20 @@ LANDMARK_3D_STRIDE=2
 USERS_DB_PATH=data/users.json
 ```
 
+### ユーザー保存先（Supabase）— 本番は必須
+
+Railwayのファイルシステムはデプロイのたびに消えるため、設定しないと登録ユーザーが全員消えます。
+
+1. Supabaseで（AURAとは別の）プロジェクトを作成
+2. SQL Editor で `backend/sql/users.sql` を実行
+3. Settings → API から **Project URL** と **service_role キー** を取得
+4. Railway の Variables に追加：
+```
+SUPABASE_URL=https://xxxxxxxx.supabase.co
+SUPABASE_SERVICE_KEY=<service_roleキー>
+```
+service_role キーはRLSを無視できる強い権限です。Railway以外（フロント・Git・チャット）に置かないこと。
+
 ### ヘルスチェック確認
 
 デプロイ後、発行されたURLで確認：
