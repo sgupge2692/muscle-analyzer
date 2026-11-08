@@ -1,12 +1,19 @@
-fastapi==0.115.14
-mediapipe==1.1.1
-numpy==1.26.4
-opencv-contrib-python-headless==4.10.0.84
-pandas==2.2.3
-python-multipart==0.0.20
-scikit-learn==1.6.1
-scipy==1.14.1
-uvicorn==0.34.3
+# ── バージョン固定の理由（下げないこと）────────────────────────────
+# - Python 3.12+ 必須: numpy 2.5 / scipy 1.18 の要件（Dockerfile は python:3.13-slim）
+# - scikit-learn は学習済みモデル(.pkl)の保存時と同じ 1.9.1 に固定。
+#   版が違うと InconsistentVersionWarning が出て、推論結果が不正になる恐れがある
+#   （卒論の評価実験もこの版で行うこと）
+# - 「存在しないバージョン」というpipのエラーは、古いPython(例: macOS標準の3.9)で
+#   実行したときに出るだけ。pipを動かしているPythonのバージョンを先に確認すること
+fastapi==0.143.0
+mediapipe==1.1.0
+numpy==2.5.4
+opencv-contrib-python-headless==5.0.0.93
+pandas==3.0.6
+python-multipart==0.0.32
+scikit-learn==1.9.1
+scipy==1.18.1
+uvicorn==0.54.0
 slowapi==0.1.9
 bcrypt==4.3.0
 email-validator==2.2.0
