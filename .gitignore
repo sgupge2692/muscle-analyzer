@@ -35,3 +35,7 @@ node_modules/
 backend/output/
 
 # frontendを追跡対象に
+
+# ローカル開発用ユーザーDB（メールアドレス・パスワードハッシュが入る。絶対にコミットしない）
+backend/data/users.json
+backend/data/users.tmp
