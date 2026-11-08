@@ -58,6 +58,23 @@ cd frontend && npm run dev
 
 ---
 
+## Docker で起動（推奨・バックエンド）
+
+Pythonのバージョン違い・venvのパス・pipの不具合に悩まされないための方法。本番(Railway)と同じ `backend/Dockerfile`（Python 3.13）を使うので、開発と本番で環境が揃う。
+
+```bash
+cd ~/Desktop/01_Development/laboratory/muscle-analyzer
+docker compose up --build    # 初回（数分）。2回目以降は docker compose up
+```
+
+- Docker Desktop を起動しておく（`docker info` でエラーが出なければOK）
+- フロントは従来通り別タブで `cd frontend && npm run dev`
+- `backend/.env` が必要（`JWT_SECRET` など）
+- コードを編集すると自動でリロードされる
+- **MLの学習(PyTorch)は Docker の外で実行する**。macOSのDockerはLinux仮想マシン上で動くため、Apple GPU(mps)を使えない
+
+学習ポイント: ① イメージとコンテナの違 い ② `COPY requirements.txt` を先にしてレイヤーキャッシュを効かせる理由（Dockerfile参照）③ bind mount（開発）と COPY（本番）の使い分け ④ `env_file` で秘密情報をイメージに入れない
+
 ## 環境変数
 
 ### バックエンド（`backend/.env`）
