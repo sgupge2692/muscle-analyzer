@@ -11,7 +11,7 @@ auth.py — JWT認証 + bcryptパスワードハッシュ化モジュール
   - パスワード: bcrypt(cost=12) でハッシュ化（平文は保存しない）
   - JWT: HS256, 有効期限60分（リフレッシュトークンは別途実装予定）
   - JWTシークレット: 環境変数 JWT_SECRET から取得（必須）
-  - レート制限: /auth/login は 5回/分（ブルートフォース対策）
+  - レート制限: /auth/login・/auth/register は IPごとに5回/分（メモリ内の簡易実装）
 """
 import os
 import json
@@ -178,6 +178,36 @@ def _save_users(users: dict) -> None:
         json.dump(users, f, indent=2, ensure_ascii=False)
 
 
+
+# ── タイミング攻撃対策用ダミーハッシュ ──────────────────────
+# 存在しないメールでもbcrypt検証を1回走らせ、応答時間の差でユーザー有無を推測させない
+_DUMMY_HASH: Optional[str] = None
+
+
+def _get_dummy_hash() -> str:
+    global _DUMMY_HASH
+    if _DUMMY_HASH is None:
+        _DUMMY_HASH = _hash_password(os.urandom(16).hex())
+    return _DUMMY_HASH
+
+
+# ── 簡易レート制限（IPごと・メモリ内） ──────────────────────
+# 制限: 単一プロセス内のみ有効（再起動でリセット／複数インスタンス間では共有されない）。
+# X-Forwarded-For は偽装可能なので、本格運用ではRedis等＋プロキシ側制限に移行すること。
+_ATTEMPTS: dict[str, list[float]] = {}
+
+
+def _check_rate_limit(request: Request, limit: int = 5, window: int = 60) -> None:
+    fwd = request.headers.get("x-forwarded-for", "")
+    ip  = fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+    now = time.time()
+    hits = [t for t in _ATTEMPTS.get(ip, []) if now - t < window]
+    if len(hits) >= limit:
+        logger.warning(f"レート制限: {ip}")
+        raise HTTPException(429, "試行回数が多すぎます。1分ほど待ってからお試しください")
+    hits.append(now)
+    _ATTEMPTS[ip] = hits
+
 # ── 認証依存関係 ─────────────────────────────────────────────
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
@@ -195,8 +225,9 @@ async def get_current_user(
 
 # ── ルーター ─────────────────────────────────────────────────
 @router.post("/register", response_model=TokenResponse, status_code=201)
-async def register(body: RegisterRequest):
+async def register(body: RegisterRequest, request: Request):
     """新規ユーザー登録（パスワードはbcryptでハッシュ化して保存）"""
+    _check_rate_limit(request)
     users = _load_users()
 
     # メールアドレス重複チェック
@@ -223,14 +254,15 @@ async def register(body: RegisterRequest):
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, request: Request):
     """ログイン（パスワード検証してJWT発行）"""
+    _check_rate_limit(request)
     users = _load_users()
     user  = next((u for u in users.values() if u["email"] == body.email), None)
 
-    # タイミング攻撃対策: ユーザーが存在しない場合もハッシュ計算を行う
-    dummy_hash = "bcrypt:$2b$12$dummy_hash_for_timing_attack_prevention"
-    stored_pw  = user["password"] if user else dummy_hash
+    # タイミング攻撃対策: ユーザー有無にかかわらず必ずbcrypt検証を1回実行する
+    stored_pw   = user["password"] if user else _get_dummy_hash()
+    password_ok = _verify_password(body.password, stored_pw)
 
-    if not user or not _verify_password(body.password, stored_pw):
+    if not user or not password_ok:
         logger.warning(f"ログイン失敗: {body.email} from {request.client.host if request.client else 'unknown'}")
         raise HTTPException(401, "メールアドレスまたはパスワードが間違っています")
 
