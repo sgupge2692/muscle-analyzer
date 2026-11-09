@@ -1,4 +1,5 @@
 import sys, json, shutil, tempfile, os, uuid, logging
+import time as _time
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends, WebSocket
 from fastapi.security import HTTPBearer
@@ -235,6 +236,7 @@ async def analyze(
 
     safe_filename = f"{uuid.uuid4()}{Path(file.filename or 'video.mp4').suffix.lower()}"
 
+    _t_all = _time.perf_counter()  # [計測] 開始
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_video = Path(tmpdir) / safe_filename
         tmp_video.write_bytes(content)
@@ -242,7 +244,10 @@ async def analyze(
         # 1. 骨格検出
         landmarks_csv = Path(tmpdir) / "landmarks.csv"
         try:
-            extract_landmarks(str(tmp_video), str(landmarks_csv), frame_skip=frame_skip)
+            _t = _time.perf_counter()
+            n_proc = extract_landmarks(str(tmp_video), str(landmarks_csv), frame_skip=frame_skip)
+            _t_extract = _time.perf_counter() - _t
+            logger.info(f"[計測] 骨格検出: {n_proc}フレーム処理 {_t_extract:.1f}s")
         except Exception as e:
             logger.error(f"ランドマーク抽出失敗: {e}", exc_info=True)
             raise HTTPException(500, "動画の解析に失敗しました。別の動画をお試しください")
@@ -271,7 +276,9 @@ async def analyze(
         activations    = estimate_activation(features, active_muscles, exercise=exercise, body_scale=body_scale)
 
         # 5. 3Dランドマーク時系列（MLモードより前に生成）
+        _t = _time.perf_counter()
         landmarks_3d_full = landmarks_csv_to_3d_sequence(str(landmarks_csv))
+        _t_3d = _time.perf_counter() - _t
         landmarks_3d = landmarks_3d_full[::LANDMARK_3D_STRIDE]
         logger.info(f"3Dランドマーク: {len(landmarks_3d_full)}フレーム → {len(landmarks_3d)}フレーム（stride={LANDMARK_3D_STRIDE}）")
 
@@ -316,6 +323,8 @@ async def analyze(
                 form_feedback["rep_1"] = issues
 
 
+    _t_total = _time.perf_counter() - _t_all
+    logger.info(f"[計測] 合計 {_t_total:.1f}s = 骨格検出 {_t_extract:.1f}s + 3D変換 {_t_3d:.1f}s + その他 {_t_total - _t_extract - _t_3d:.1f}s")
     response = {
         "exercise":      exercise,
         "total_reps":    len(rep_data),
