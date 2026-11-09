@@ -11,10 +11,14 @@ WORKDIR /app
 # システム依存ライブラリ
 # - libgl1: OpenCV が必要（旧 libgl1-mesa-glx は Debian で非推奨/削除されたため libgl1 を指定）
 # - libglib2.0-0: MediaPipe が必要
+# - libegl1 / libgles2: MediaPipe の libmediapipe.so が要求する(libEGL.so.1 / libGLESv2.so.2)。
+#   無いと PoseLandmarker 生成時に OSError で解析が必ず失敗する
 # - curl: ヘルスチェック用
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
+    libegl1 \
+    libgles2 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
