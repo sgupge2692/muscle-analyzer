@@ -1,5 +1,6 @@
 import sys, json, shutil, tempfile, os, uuid, logging
 import time as _time
+import asyncio
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends, WebSocket
 from fastapi.security import HTTPBearer
@@ -245,7 +246,8 @@ async def analyze(
         landmarks_csv = Path(tmpdir) / "landmarks.csv"
         try:
             _t = _time.perf_counter()
-            n_proc = extract_landmarks(str(tmp_video), str(landmarks_csv), frame_skip=frame_skip)
+            # 骨格検出は数十秒かかるCPU処理。async関数内で直接呼ぶとサーバー全体（/healthやWebSocket）が止まるので別スレッドで実行
+            n_proc = await asyncio.to_thread(extract_landmarks, str(tmp_video), str(landmarks_csv), frame_skip=frame_skip)
             _t_extract = _time.perf_counter() - _t
             logger.info(f"[計測] 骨格検出: {n_proc}フレーム処理 {_t_extract:.1f}s")
         except Exception as e:
