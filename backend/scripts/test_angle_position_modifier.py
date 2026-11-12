@@ -20,28 +20,20 @@ from anatomy.muscle_activation import (  # noqa: E402
 
 
 def test_modifier_peaks_at_reported_angle():
-    # ピーク角度で1.0になる（対称幅は旧形式との後方互換で左右共通）
-    assert abs(_angle_position_modifier(90, 90, 35, 35) - 1.0) < 1e-9
+    # ピーク角度で1.0になる
+    assert abs(_angle_position_modifier(90, 90, 35) - 1.0) < 1e-9
 
 
-def test_modifier_is_symmetric_with_equal_widths():
-    # 左右同幅ならガウス型として左右対称
-    assert abs(_angle_position_modifier(55, 90, 35, 35) - _angle_position_modifier(125, 90, 35, 35)) < 1e-9
+def test_modifier_is_symmetric():
+    # ガウス型なので左右対称
+    assert abs(_angle_position_modifier(55, 90, 35) - _angle_position_modifier(125, 90, 35)) < 1e-9
 
 
 def test_modifier_decays_with_distance():
     # ピークから離れるほど単調に減衰し、常に0以上
-    values = [_angle_position_modifier(a, 90, 35, 35) for a in (90, 100, 125, 160, 180)]
+    values = [_angle_position_modifier(a, 90, 35) for a in (90, 100, 125, 160, 180)]
     assert all(v > 0 for v in values)
     assert values == sorted(values, reverse=True)
-
-
-def test_modifier_is_asymmetric_with_piecewise_widths():
-    # 左右で幅が違う場合、同距離でも幅が大きい側の減衰が緩やか
-    steep_left = _angle_position_modifier(80, 90, 10, 100)   # ピークより小さい角度側=左幅
-    gentle_right = _angle_position_modifier(100, 90, 10, 100)  # ピークより大きい角度側=右幅
-    assert abs(steep_left - _angle_position_modifier(90, 90, 10, 100)) > abs(
-        gentle_right - _angle_position_modifier(90, 90, 10, 100))
 
 
 def test_squats_quadriceps_applies_position_modifier():
