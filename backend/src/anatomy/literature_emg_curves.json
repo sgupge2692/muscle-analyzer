@@ -1,0 +1,60 @@
+{
+  "_meta": {
+    "説明": "種目×筋群ごとの文献EMG角度依存カーブ。peak_angle_deg/width_deg が非nullの筋群のみ _angle_position_modifier（ガウス型）を適用し、nullの筋群は既存の角度変化率ベースの変調にフォールバックする",
+    "角度規約": "システムの解剖学的関節角度（直立=180°、深屈曲=約70〜90°）。文献が膝屈曲角（伸展=0°）で報告している場合は 180−屈曲角 で変換して記載する",
+    "パラメータ角": "全カーブは膝角度（right_knee/left_knee の平均）をパラメータとする。Marchetti et al. 2016 は膝屈曲角で、Escamilla et al. 2002 は膝屈曲区間で比較しているため",
+    "筋群名": "システムの筋群キー（muscle_activation.py の EXERCISE_BASE_WEIGHTS / MUSCLE_JOINT_MAP と一致）。Lower_Back は脊柱起立筋（Erector Spinae）を指す"
+  },
+  "Squats": {
+    "Quadriceps": {
+      "peak_angle_deg": 90,
+      "width_deg": 35,
+      "source": "Marchetti et al. 2016",
+      "note": "等尺性バックスクワットを膝屈曲20°/90°/140°で比較し、大腿四頭筋3部位（VL/VM/RF）とも90°屈曲で最大。システムの解剖学的角度では 180−90=90° がピークに相当。width_deg は論文の効果量表（Table 1）から目視で読み取った近似値"
+    },
+    "Gluteus": {
+      "peak_angle_deg": 90,
+      "width_deg": 50,
+      "source": "Marchetti et al. 2016",
+      "note": "大臀筋は屈曲20°と90°の両方で140°より有意に高活性（140°で約80%低下）。ガウス近似では近立位置（屈曲20°）の高活性を表現しきれないため、中央付近を重視した近似値（論文Fig.1から目視で読み取り）"
+    },
+    "Hamstring": {
+      "peak_angle_deg": null,
+      "width_deg": null,
+      "note": "膝角度による活動差なし（BF・STとも3角度でほぼ同程度）。非単調補正は適用しない",
+      "source": "Marchetti et al. 2016"
+    },
+    "Lower_Back": {
+      "peak_angle_deg": null,
+      "width_deg": null,
+      "note": "スクワットの膝角度に対する脊柱起立筋の角度依存性を報告した定量的文献が見つかっていない。# TODO: 要文献確認",
+      "source": null
+    }
+  },
+  "Deadlift": {
+    "Quadriceps": {
+      "peak_angle_deg": null,
+      "width_deg": null,
+      "note": "四頭筋の活動は膝屈曲の大きい区間で有意に大きいことが報告されているが、ピーク角度の定量値は未記載（スタンス幅・体格で初期膝角度が変わるため）。非単調補正は適用しない。# TODO: 要文献確認",
+      "source": "Escamilla et al. 2002"
+    },
+    "Gluteus": {
+      "peak_angle_deg": null,
+      "width_deg": null,
+      "note": "大臀筋の活動は膝屈曲の大きい区間で有意に大きいことが報告されているが、ピーク角度の定量値は未記載。非単調補正は適用しない。# TODO: 要文献確認",
+      "source": "Escamilla et al. 2002"
+    },
+    "Hamstring": {
+      "peak_angle_deg": null,
+      "width_deg": null,
+      "note": "膝屈曲の小さい区間（ロックアウト側）でやや高活性と報告されるが、定量値・ピーク角度の記載はなく角度依存性は小さい。非単調補正は適用しない",
+      "source": "Escamilla et al. 2002"
+    },
+    "Lower_Back": {
+      "peak_angle_deg": null,
+      "width_deg": null,
+      "note": "L3/T12傍脊柱筋の活動は膝屈曲の大きい区間で有意に大きいと報告されるが、ピーク角度の定量値は未記載。非単調補正は適用しない。# TODO: 要文献確認",
+      "source": "Escamilla et al. 2002"
+    }
+  }
+}
