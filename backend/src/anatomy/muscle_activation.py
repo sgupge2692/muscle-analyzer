@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import json
+import logging
+from pathlib import Path
 # 筋群ごとの「関連関節」と「角度が小さいほど収縮か大きいほど収縮か」の定義
 MUSCLE_JOINT_MAP = {
     # ── 下半身 ──────────────────────────────────────────────────
@@ -108,6 +110,66 @@ EXERCISE_BASE_WEIGHTS: dict[str, dict[str, float]] = {
     },
 }
 
+# 文献EMGカーブJSONの内容をモジュールキャッシュ（None = 未読み込み）
+_literature_curves_cache: dict | None = None
+
+
+def _load_literature_curves() -> dict:
+    """文献EMG角度依存カーブ（literature_emg_curves.json）を遅延読み込みしてキャッシュ。
+
+    ファイルが無い・壊れている場合は空dictを返し、既存の動的変調のみで動作を継続する。
+    """
+    global _literature_curves_cache
+    if _literature_curves_cache is None:
+        path = Path(__file__).with_name("literature_emg_curves.json")
+        try:
+            _literature_curves_cache = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            logging.warning(f"literature_emg_curves.json を読めません（文献変調は無効）: {e}")
+            _literature_curves_cache = {}
+    return _literature_curves_cache
+
+
+def _angle_position_modifier(angle_deg: float, peak_angle_deg: float, width_deg: float) -> float:
+    """Returns a Gaussian-shaped weight (0-1) centered on the literature-reported peak angle."""
+    import math
+    return math.exp(-((angle_deg - peak_angle_deg) ** 2) / (2 * width_deg ** 2))
+
+
+# 文献EMGカーブは膝角度をパラメータとしている（Marchetti et al. 2016 は膝屈曲角、
+# Escamilla et al. 2002 は膝屈曲区間で比較）。Gluteus など MUSCLE_JOINT_MAP 上の
+# 関連関節が股関節の筋群も、文献との整合を優先して膝角度で変調する（実装者が確認済み）。
+_LITERATURE_CURVE_JOINT_COLS = ("right_knee", "left_knee")
+
+
+def _literature_position_modifier(features: pd.DataFrame,
+                                  exercise: str,
+                                  muscle: str) -> pd.Series | None:
+    """
+    文献EMGカーブが定義されている（種目, 筋群）ペアに対して、
+    膝角度の位置による変調係数（0〜1）を返す。未定義なら None。
+
+    カーブ未定義のペアは None を返し、呼び出し側が既存の
+    _compute_dynamic_modifier（角度変化率ベース）にフォールバックする。
+    """
+    entry = _load_literature_curves().get(exercise, {}).get(muscle)
+    if not isinstance(entry, dict):
+        return None
+    peak = entry.get("peak_angle_deg")
+    width = entry.get("width_deg")
+    if peak is None or width is None:
+        return None
+
+    knee_cols = [c for c in _LITERATURE_CURVE_JOINT_COLS if c in features.columns]
+    if not knee_cols:
+        return None
+    knee = features[knee_cols].ffill().bfill().mean(axis=1)
+    if knee.isna().all():
+        return None
+    mod = knee.apply(lambda a: _angle_position_modifier(float(a), peak, width))
+    return mod.clip(0.0, 1.0)
+
+
 def estimate_activation(angle_features: pd.DataFrame,
                         active_muscles: list,
                         exercise: str = "",
@@ -119,6 +181,11 @@ def estimate_activation(angle_features: pd.DataFrame,
     2段階アプローチ:
     1. 種目の基準重みがあればそれをベースに使う（バイオメカニクス的に正確）
     2. ない場合は関節角度の変化量（velocity）で動的に推定する
+
+    さらに literature_emg_curves.json に文献EMGカーブが定義されている
+    （種目, 筋群）ペアは、基準重みに関節角度の「位置」による変調
+    （_angle_position_modifier、ガウス型）を適用する。未定義ペアは従来の
+    角度変化率ベースの変調のまま（後方互換性維持）。
 
     active_muscles: muscle_mapping.jsonから取得した筋群名リスト
     exercise: 種目名（基準重みの参照に使用）
@@ -153,8 +220,13 @@ def estimate_activation(angle_features: pd.DataFrame,
                 normalized_weights = {m: w / total_adj for m, w in adjusted.items()}
             
             for muscle, base_w in normalized_weights.items():
-                # 動的な変調：関節角度の変化率でベース重みを±20%変調
-                dynamic_mod = _compute_dynamic_modifier(angle_features, muscle, window)
+                # 動的な変調：文献EMGカーブがある筋群は角度「位置」ベース、
+                # それ以外は従来どおり角度「変化率」ベース（後方互換性維持）
+                pos_mod = _literature_position_modifier(angle_features, exercise, muscle)
+                if pos_mod is not None:
+                    dynamic_mod = pos_mod
+                else:
+                    dynamic_mod = _compute_dynamic_modifier(angle_features, muscle, window)
                 # ベース重み × 動的変調（0.8〜1.2の範囲）
                 raw = base_w * (0.8 + 0.4 * dynamic_mod)
                 activations[muscle] = pd.Series(raw, index=angle_features.index)
