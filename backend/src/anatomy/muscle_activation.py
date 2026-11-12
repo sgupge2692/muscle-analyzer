@@ -134,10 +134,19 @@ def _load_literature_curves() -> dict:
     return _literature_curves_cache
 
 
-def _angle_position_modifier(angle_deg: float, peak_angle_deg: float, width_deg: float) -> float:
-    """Returns a Gaussian-shaped weight (0-1) centered on the literature-reported peak angle."""
+def _angle_position_modifier(angle_deg: float,
+                             peak_angle_deg: float,
+                             width_left_deg: float,
+                             width_right_deg: float) -> float:
+    """ピーク角度を境に左右で幅が異なる非対称ガウス型重み（0-1）を返す。
+
+    対称ガウスでは表現できない文献パターン（Marchetti et al. 2016 の大臀筋:
+    ピーク（膝屈曲90°）より浅い側では高活性を維持、深い側では急激に低下）
+    に対応するため、区分幅の非対称ガウスを採用（実装者承認済み）。
+    """
     import math
-    return math.exp(-((angle_deg - peak_angle_deg) ** 2) / (2 * width_deg ** 2))
+    width = width_left_deg if angle_deg <= peak_angle_deg else width_right_deg
+    return math.exp(-((angle_deg - peak_angle_deg) ** 2) / (2 * width ** 2))
 
 
 # 文献EMGカーブは膝角度をパラメータとしている（Marchetti et al. 2016 は膝屈曲角、
@@ -160,9 +169,18 @@ def _literature_position_modifier(features: pd.DataFrame,
     if not isinstance(entry, dict):
         return None
     peak = entry.get("peak_angle_deg")
-    width = entry.get("width_deg")
-    if peak is None or width is None:
+    if peak is None:
         return None
+    # 非対称幅（width_left_deg/width_right_deg）を優先し、
+    # 旧形式の対称幅（width_deg）は左右共通として後方互換に扱う
+    width_left = entry.get("width_left_deg")
+    width_right = entry.get("width_right_deg")
+    if width_left is None or width_right is None:
+        width = entry.get("width_deg")
+        if width is None:
+            return None
+        width_left = width if width_left is None else width_left
+        width_right = width if width_right is None else width_right
 
     knee_cols = [c for c in _LITERATURE_CURVE_JOINT_COLS if c in features.columns]
     if not knee_cols:
@@ -170,7 +188,7 @@ def _literature_position_modifier(features: pd.DataFrame,
     knee = features[knee_cols].ffill().bfill().mean(axis=1)
     if knee.isna().all():
         return None
-    mod = knee.apply(lambda a: _angle_position_modifier(float(a), peak, width))
+    mod = knee.apply(lambda a: _angle_position_modifier(float(a), peak, width_left, width_right))
     return mod.clip(0.0, 1.0)
 
 
@@ -188,7 +206,7 @@ def estimate_activation(angle_features: pd.DataFrame,
 
     さらに literature_emg_curves.json に文献EMGカーブが定義されている
     （種目, 筋群）ペアは、基準重みに関節角度の「位置」による変調
-    （_angle_position_modifier、ガウス型）を適用する。未定義ペアは従来の
+    （_angle_position_modifier、区分幅の非対称ガウス型）を適用する。未定義ペアは従来の
     角度変化率ベースの変調のまま（後方互換性維持）。
 
     active_muscles: muscle_mapping.jsonから取得した筋群名リスト
