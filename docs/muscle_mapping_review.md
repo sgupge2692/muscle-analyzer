@@ -134,3 +134,27 @@ Pike_push-up:       [Chest, Shoulder, Triceps, Upper_Back, Upper_Abs, Lower_Abs,
 | `Cable_Curl` | Biceps偏重か否か要確認 |
 
 次のレビュー予定: MuscleMapの実際の筋電図データと照合（Kunyuさんからの正式ラベル待ち）
+
+---
+
+## 追加レビュー（2026-11-12）：Deadlift の EXERCISE_BASE_WEIGHTS に Quadriceps を追加
+
+### 問題
+
+2026-11-04 のレビューで `Deadlift` の `muscle_mapping.json`（筋群リスト）には Quadriceps(13) を追加済みだったが、`muscle_activation.py` の `EXERCISE_BASE_WEIGHTS` には Quadriceps の重みが存在せず、マッピングと基準重みが不整合だった。その結果、デッドリフト解析時に四頭筋が「基準重みなしの残り筋群」（最大5%の小スコア）として扱われていた。
+
+### 修正内容
+
+`EXERCISE_BASE_WEIGHTS["Deadlift"]` に `Quadriceps: 0.18` を追加。
+
+### 根拠（文献値）
+
+Escamilla, R.F. et al. (2002). "An electromyographic analysis of sumo and conventional style squats and deadlifts" (すべての数値は論文Table/Figから目視で読み取った近似値):
+
+- 従来型デッドリフトの sEMG 活動（%MVIC, 平均）: Vastus Lateralis 40±22 / Vastus Medialis 36±25 / Rectus Femoris 19±16 / Gluteus Maximus 35±27 / Biceps Femoris 28±19
+- 四頭筋の%MVICは大臀筋（35%）と同等以上 → 既存の Gluteus 0.30 / Hamstring 0.28 と比較して大きく外れない 0.18（正規化後は約15%）を採用
+- なお四頭筋の活動は膝屈曲の大きい区間で有意に大きいことも同論文で報告されているが、ピーク角度の定量値は未記載のため `literature_emg_curves.json` 側は `null`（要文献確認）としている
+
+### 注意（後方互換性）
+
+重み追加に伴い、Deadlift の基準重みの正規化後の値が変化する（例: Gluteus 0.30 → 0.30/1.18 ≈ 0.254）。レスポンスの**スキーマ**は不変だが、デッドリフト解析の**数値**は本変更以降シフトする。`/analyze`, `/ws/stream` の入出力形式には影響なし。

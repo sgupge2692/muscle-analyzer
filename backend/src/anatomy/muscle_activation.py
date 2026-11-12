@@ -79,6 +79,10 @@ EXERCISE_BASE_WEIGHTS: dict[str, dict[str, float]] = {
         "Inner_Thigh":0.05,
     },
     "Deadlift": {
+        # Quadriceps: デッドリフトでも四頭筋は有意に活動する
+        # （Escamilla et al. 2002: %MVIC 平均 VL 40±22 / VM 36±25 / GM 35±27 / BF 28±19。
+        #   論文の値から目視で読み取った近似値に基づく相対重み）
+        "Quadriceps": 0.18,
         "Gluteus":    0.30,
         "Hamstring":  0.28,
         "Lower_Back": 0.22,
