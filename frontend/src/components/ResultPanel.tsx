@@ -3,7 +3,7 @@ import { useState } from "react";
 import { AnalyzeResult } from "@/types/analysis";
 import { MuscleHeatmap } from "./MuscleHeatmap";
 import { FormFeedbackCard } from "./FormFeedbackCard";
-import { AvatarViewer3D } from "./AvatarViewer3D";
+import { AvatarViewer3DR3F } from "./AvatarViewer3DR3F";
 
 const MUSCLE_NAMES_JA: Record<string, string> = {
   Quadriceps:  "大腿四頭筋", Hamstring:   "ハムストリング",
@@ -234,12 +234,12 @@ export function ResultPanel({
               {tab === "avatar3d" && has3D && (
                 <div className="flex flex-col items-center gap-4">
                   <p className="text-[10px] tracking-[0.2em] text-[#444] font-bold">3D MOTION VIEWER</p>
-                  <AvatarViewer3D
+                  <AvatarViewer3DR3F
                     frames={result.landmarks_3d ?? []}
                     activations={act}
                   />
                   <p className="text-[#333] text-[10px] text-center">
-                    筋肉活動強度に応じてボーンが赤くハイライトされます
+                    筋肉活動強度に応じてメッシュが赤く発光します
                   </p>
                 </div>
               )}
