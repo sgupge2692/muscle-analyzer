@@ -33,6 +33,10 @@ from anatomy.angle_features import compute_angle_features
 from anatomy.rep_detector import load_knee_angles, detect_reps
 from anatomy.muscle_activation import estimate_activation
 from anatomy.form_checker import check_form
+from anatomy.deviation_diagnosis import diagnose_peak_angle_deviation, evidence_level
+from anatomy.velocity_metrics import (
+    rep_angular_velocities, velocity_loss, filter_form_valid_reps,
+)
 from api.auth import router as auth_router, get_current_user
 from api.websocket_stream import websocket_stream_endpoint
 
@@ -302,6 +306,7 @@ async def analyze(
         # 7. レップごとの集計 + フォーム診断
         rep_data      = {}
         form_feedback = {}
+        form_flags    = {}
 
         if reps:
             for r in reps:
@@ -315,6 +320,7 @@ async def analyze(
                 issues = check_form(features, exercise, r["start"], r["end"], target_angle=target_angle)
                 if issues:
                     form_feedback[key] = issues
+                    form_flags[key] = True
         else:
             rep_data["rep_1"] = {
                 col: round(float(activations[col].mean()), 4)
@@ -323,6 +329,36 @@ async def analyze(
             issues = check_form(features, exercise, target_angle=target_angle)
             if issues:
                 form_feedback["rep_1"] = issues
+                form_flags["rep_1"] = True
+
+        # 8. 文献理想曲線に対する活動曲線逸脱診断 + エビデンスレベル（課題C）
+        knee_angles_series = load_knee_angles(str(landmarks_csv))
+        try:
+            deviation_issues = diagnose_peak_angle_deviation(activations, knee_angles_series, exercise)
+        except Exception as e:
+            logger.warning(f"逸脱診断失敗: {e}")
+            deviation_issues = []
+        evidence = {
+            m: evidence_level(exercise, m)
+            for m in active_muscles
+        }
+
+        # 9. velocity loss とフォーム妥当性フィルタ（課題D）
+        velocity_metrics = None
+        try:
+            if reps:
+                vel = rep_angular_velocities(knee_angles_series, reps)
+                velocity_metrics = {"per_rep_velocities": vel, "velocity_loss": velocity_loss(vel)}
+                valid_reps, excluded = filter_form_valid_reps(reps, form_flags)
+                if excluded:
+                    vel_valid = rep_angular_velocities(knee_angles_series, valid_reps)
+                    velocity_metrics["form_filtered"] = {
+                        "excluded_reps": excluded,
+                        "velocity_loss": velocity_loss(vel_valid),
+                        "note": "フォーム逸脱レップを除外した条件比較（研究計画書の条件比較に対応）",
+                    }
+        except Exception as e:
+            logger.warning(f"velocity loss 計算失敗: {e}")
 
 
     _t_total = _time.perf_counter() - _t_all
@@ -337,6 +373,10 @@ async def analyze(
     }
     if ml_scores is not None:
         response["ml_scores"] = ml_scores
+    # 追加フィールド（既存クライアントへの後方互換性のため追加のみ）
+    response["deviation_diagnosis"] = deviation_issues
+    response["evidence_levels"] = evidence
+    response["velocity_metrics"] = velocity_metrics
 
     return response
 
