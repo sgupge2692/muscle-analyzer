@@ -4,6 +4,7 @@ import { AnalyzeResult } from "@/types/analysis";
 import { MuscleHeatmap } from "./MuscleHeatmap";
 import { FormFeedbackCard } from "./FormFeedbackCard";
 import { AvatarViewer3DR3F } from "./AvatarViewer3DR3F";
+import { DiagnosisCard } from "./DiagnosisCard";
 
 const MUSCLE_NAMES_JA: Record<string, string> = {
   Quadriceps:  "大腿四頭筋", Hamstring:   "ハムストリング",
@@ -17,7 +18,7 @@ const MUSCLE_NAMES_JA: Record<string, string> = {
   Forearms:    "前腕",       Feet_Ankles: "足首", Wrists: "手首",
 };
 
-type Tab = "muscles" | "form" | "avatar3d";
+type Tab = "muscles" | "form" | "diagnosis" | "avatar3d";
 
 export function ResultPanel({
   result,
@@ -42,6 +43,10 @@ export function ResultPanel({
   const errorCount   = issues.filter(i => i.severity === "error").length;
   const warningCount = issues.filter(i => i.severity === "warning").length;
   const has3D = (result.landmarks_3d ?? []).length > 0;
+  const hasDiagnosis =
+    (result.deviation_diagnosis?.length ?? 0) > 0 ||
+    result.velocity_metrics != null ||
+    Object.keys(result.evidence_levels ?? {}).length > 0;
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-8 pb-32">
@@ -173,6 +178,24 @@ export function ResultPanel({
                   </span>
                 )}
               </button>
+              {hasDiagnosis && (
+                <button
+                  onClick={() => setTab("diagnosis")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-4 text-xs font-bold
+                    tracking-[0.15em] transition-all border-b-2
+                    ${tab === "diagnosis"
+                      ? "text-white border-red-500"
+                      : "text-[#444] border-transparent hover:text-[#666]"
+                    }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  診断・疲労
+                  <span className="text-[9px] text-red-500 font-bold">NEW</span>
+                </button>
+              )}
               {has3D && (
                 <button
                   onClick={() => setTab("avatar3d")}
@@ -230,6 +253,8 @@ export function ResultPanel({
               {tab === "form" && (
                 <FormFeedbackCard repKey={repKey} issues={issues} />
               )}
+
+              {tab === "diagnosis" && <DiagnosisCard result={result} />}
 
               {tab === "avatar3d" && has3D && (
                 <div className="flex flex-col items-center gap-4">
