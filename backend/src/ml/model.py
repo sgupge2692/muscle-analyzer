@@ -8,9 +8,9 @@
   アーキテクチャが一致する版である。コミット 93bba09 で強化版アーキテクチャ
   （3層Conv・kernel 3/5/7・SE風構成）が書かれたが再学習はされておらず、
   このままだと学習済みチェックポイントがロードできず、本番のPyTorch推論も
-  暗黙に失敗していた。強化版は model_evo.py（MuscleClassifier1DCNNEvo）に
-  退避した。強化版で再学習して best_1dcnn.pt を差し替えた後に、本クラスを
-  強化版へ置き換えること。
+  暗黙に失敗していた。強化版は track-b-experimental ブランチの
+  model_evo.py（MuscleClassifier1DCNNEvo）に退避した。強化版で再学習して
+  best_1dcnn.pt を差し替えた後に、本クラスを強化版へ置き換えること。
 """
 
 import torch

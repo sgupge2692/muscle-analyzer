@@ -3,8 +3,6 @@ import { useState } from "react";
 import { AnalyzeResult } from "@/types/analysis";
 import { MuscleHeatmap } from "./MuscleHeatmap";
 import { FormFeedbackCard } from "./FormFeedbackCard";
-import { AvatarViewer3DR3F } from "./AvatarViewer3DR3F";
-import { DiagnosisCard } from "./DiagnosisCard";
 
 const MUSCLE_NAMES_JA: Record<string, string> = {
   Quadriceps:  "大腿四頭筋", Hamstring:   "ハムストリング",
@@ -18,7 +16,7 @@ const MUSCLE_NAMES_JA: Record<string, string> = {
   Forearms:    "前腕",       Feet_Ankles: "足首", Wrists: "手首",
 };
 
-type Tab = "muscles" | "form" | "diagnosis" | "avatar3d";
+type Tab = "muscles" | "form";
 
 export function ResultPanel({
   result,
@@ -42,11 +40,6 @@ export function ResultPanel({
   const topMuscle = sorted[0];
   const errorCount   = issues.filter(i => i.severity === "error").length;
   const warningCount = issues.filter(i => i.severity === "warning").length;
-  const has3D = (result.landmarks_3d ?? []).length > 0;
-  const hasDiagnosis =
-    (result.deviation_diagnosis?.length ?? 0) > 0 ||
-    result.velocity_metrics != null ||
-    Object.keys(result.evidence_levels ?? {}).length > 0;
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-8 pb-32">
@@ -178,42 +171,6 @@ export function ResultPanel({
                   </span>
                 )}
               </button>
-              {hasDiagnosis && (
-                <button
-                  onClick={() => setTab("diagnosis")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-4 text-xs font-bold
-                    tracking-[0.15em] transition-all border-b-2
-                    ${tab === "diagnosis"
-                      ? "text-white border-red-500"
-                      : "text-[#444] border-transparent hover:text-[#666]"
-                    }`}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                  診断・疲労
-                  <span className="text-[9px] text-red-500 font-bold">NEW</span>
-                </button>
-              )}
-              {has3D && (
-                <button
-                  onClick={() => setTab("avatar3d")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-4 text-xs font-bold
-                    tracking-[0.15em] transition-all border-b-2
-                    ${tab === "avatar3d"
-                      ? "text-white border-red-500"
-                      : "text-[#444] border-transparent hover:text-[#666]"
-                    }`}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
-                  </svg>
-                  3Dアバター
-                  <span className="text-[9px] text-red-500 font-bold">NEW</span>
-                </button>
-              )}
             </div>
 
             {/* タブコンテンツ */}
@@ -252,21 +209,6 @@ export function ResultPanel({
 
               {tab === "form" && (
                 <FormFeedbackCard repKey={repKey} issues={issues} />
-              )}
-
-              {tab === "diagnosis" && <DiagnosisCard result={result} />}
-
-              {tab === "avatar3d" && has3D && (
-                <div className="flex flex-col items-center gap-4">
-                  <p className="text-[10px] tracking-[0.2em] text-[#444] font-bold">3D MOTION VIEWER</p>
-                  <AvatarViewer3DR3F
-                    frames={result.landmarks_3d ?? []}
-                    activations={act}
-                  />
-                  <p className="text-[#333] text-[10px] text-center">
-                    筋肉活動強度に応じてメッシュが赤く発光します
-                  </p>
-                </div>
               )}
             </div>
           </div>
