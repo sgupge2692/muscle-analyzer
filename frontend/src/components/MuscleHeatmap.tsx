@@ -1,4 +1,4 @@
-import { ActivationMap } from "@/types/analysis";
+import { ActivationMap, EvidenceLevelInfo } from "@/types/analysis";
 
 const MUSCLE_NAMES_JA: Record<string, string> = {
   Quadriceps:   "大腿四頭筋",
@@ -72,9 +72,41 @@ function activationToColor(value: number, opacity: number = 1): string {
   return `rgba(${r},${g},${b},${opacity})`;
 }
 
-export function MuscleHeatmap({ activations }: { activations: ActivationMap }) {
+// エビデンスレベルごとの彩度係数（文献較正の信頼度を色で区別する）
+// level 2 = literature_validated, 1 = literature_derived, 0 = model_estimate / literature_referenced
+function confidenceFactor(evidence?: EvidenceLevelInfo): number {
+  if (!evidence) return 0.35;  // 情報が無い筋は保守的に「未検証」扱い
+  if (evidence.level === 2) return 1.0;
+  if (evidence.level === 1) return 0.7;
+  return 0.35;
+}
+
+const EVIDENCE_LABEL_JA: Record<string, string> = {
+  literature_validated: "文献較正済み",
+  literature_derived: "文献値より導出（角度別検証なし）",
+  literature_referenced: "文献参照のみ（角度別定量値なし）",
+  model_estimate: "文献較正未検証（モデル推定）",
+};
+
+export function MuscleHeatmap({
+  activations,
+  evidenceLevels,
+}: {
+  activations: ActivationMap;
+  evidenceLevels?: Record<string, EvidenceLevelInfo>;
+}) {
+  const hasEvidence = evidenceLevels != null;
+  const presentTiers = new Set<number>();
+  if (hasEvidence) {
+    for (const name of Object.keys(activations)) {
+      const ev = evidenceLevels[name];
+      presentTiers.add(ev ? ev.level : 0);
+    }
+  }
+
   return (
-    <svg viewBox="0 0 200 460" className="w-full h-auto">
+    <div>
+      <svg viewBox="0 0 200 460" className="w-full h-auto">
       {/* ── 人体シルエット ── */}
       {/* 頭 */}
       <ellipse cx="100" cy="38" rx="26" ry="30" fill="#2a2a2a" />
@@ -95,16 +127,46 @@ export function MuscleHeatmap({ activations }: { activations: ActivationMap }) {
       {Object.entries(activations).map(([name, value]) => {
         const shapes = MUSCLE_SHAPES[name];
         if (!shapes || value < 0.01) return null;
+        const ev = hasEvidence ? evidenceLevels?.[name] : undefined;
+        const factor = hasEvidence ? confidenceFactor(ev) : 1.0;
+        const heat = value * factor;
+        const levelText = ev ? EVIDENCE_LABEL_JA[ev.label] : EVIDENCE_LABEL_JA["model_estimate"];
         return shapes.map((s, i) => (
           <ellipse
             key={name + i}
             cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}
-            fill={activationToColor(value, s.opacity ?? 0.9)}
+            fill={activationToColor(heat, s.opacity ?? 0.9)}
           >
-            <title>{MUSCLE_NAMES_JA[name] ?? name}: {(value * 100).toFixed(1)}%</title>
+            <title>
+              {MUSCLE_NAMES_JA[name] ?? name}: {(value * 100).toFixed(1)}%
+              {hasEvidence && `（${levelText}）`}
+            </title>
           </ellipse>
         ));
       })}
-    </svg>
+      </svg>
+      {hasEvidence && (
+        <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
+          {presentTiers.has(2) && (
+            <span className="flex items-center gap-1 text-[9px] text-[#666]">
+              <span className="w-2 h-2 rounded-full" style={{ background: activationToColor(0.8, 1) }} />
+              文献較正済み
+            </span>
+          )}
+          {presentTiers.has(1) && (
+            <span className="flex items-center gap-1 text-[9px] text-[#666]">
+              <span className="w-2 h-2 rounded-full" style={{ background: activationToColor(0.8 * 0.7, 1) }} />
+              文献値導出
+            </span>
+          )}
+          {presentTiers.has(0) && (
+            <span className="flex items-center gap-1 text-[9px] text-[#666]">
+              <span className="w-2 h-2 rounded-full" style={{ background: activationToColor(0.8 * 0.35, 1) }} />
+              文献較正未検証
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

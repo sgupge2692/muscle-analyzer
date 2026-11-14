@@ -123,7 +123,7 @@ export function ResultPanel({
               </div>
             )}
             <div className="w-full max-w-[180px] lg:max-w-none">
-              <MuscleHeatmap activations={act} />
+              <MuscleHeatmap activations={act} evidenceLevels={result.evidence_levels} />
             </div>
             <div className="mt-6 flex items-center gap-2 text-[10px] text-[#444]">
               <span className="tracking-wider">目標</span>
