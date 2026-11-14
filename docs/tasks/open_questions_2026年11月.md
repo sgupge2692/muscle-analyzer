@@ -43,6 +43,7 @@
   3. 変更せず、WS の検証方法を別途検討する
 - **仮採用**: なし（実施していない）。確認を要するため記録
 - **理由**: 依存追加は承認事項（GUARDRAILS）。本来は WS リアルタイム解析の最終動作確認で WS 経由のフレーム送受信まで確認する予定だったが、トランスポート層が環境で使えないため、確認は「接続先エンドポイントの存在」「RealtimeAnalyzer（PoseLandmarker）生成」「rep_detector によるレップ検出」「/analyze での筋活動推定・evidence_levels 出力」までで代替した。WS 本体のコード（websocket_stream.py 等）は今回の変更対象外であり、1行も変更していない。
+- **結果（解決済み）**: ユーザーの承認を得て `uvicorn[standard]==0.54.0` に変更（コミット 2ad2f60）。ローカルで WS ハンドシェイク＋ping/pong を確認済み。なお許可オリジン外クライアントへの 403 応答はエンドポイント自体の Origin チェックの正常動作であり、問題ではない。
 
 ## Q5. `scripts/evaluate_f1_comparison.py` がローカル venv で実行不可（torch なし）
 
