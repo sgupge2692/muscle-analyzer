@@ -48,9 +48,20 @@ def test_squats_quadriceps_applies_position_modifier():
 
 
 def test_uncalibrated_pair_returns_none():
-    # Deadlift/Quadriceps はカーブ未定義（null）→ None で既存ロジックにフォールバック
+    # Deadlift/Gluteus はカーブ未定義（null）→ None で既存ロジックにフォールバック
     features = pd.DataFrame({"right_knee": [90.0], "left_knee": [90.0]})
-    assert _literature_position_modifier(features, "Deadlift", "Quadriceps") is None
+    assert _literature_position_modifier(features, "Deadlift", "Gluteus") is None
+
+
+def test_deadlift_calibrated_pairs_apply_position_modifier():
+    # Deadlift の Quadriceps/Hamstring/Lower_Back は文献カーブ定義済み → 変調値を返す
+    features = pd.DataFrame({"right_knee": [95.0], "left_knee": [95.0]})
+    for muscle in ("Quadriceps", "Lower_Back"):
+        mod = _literature_position_modifier(features, "Deadlift", muscle)
+        assert mod is not None
+        assert abs(mod.iloc[0] - 1.0) < 1e-9  # リフトオフ位置(膝95°)が両筋のピーク
+    mod_bf = _literature_position_modifier(features, "Deadlift", "Hamstring")
+    assert mod_bf is not None  # Hamstring のピークは150°なので95°では最大ではないが変調は返る
 
 
 def test_unknown_muscle_returns_none():

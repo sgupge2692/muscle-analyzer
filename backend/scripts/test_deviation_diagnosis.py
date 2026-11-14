@@ -23,7 +23,10 @@ def test_evidence_level():
     lv = evidence_level("Squats", "Quadriceps")
     assert lv["level"] == 2 and lv["label"] == "literature_validated", lv
     lv2 = evidence_level("Deadlift", "Quadriceps")
-    assert lv2["level"] == 0 and lv2["label"] == "literature_referenced", lv2
+    assert lv2["level"] == 2 and lv2["label"] == "literature_validated", lv2
+    lv2b = evidence_level("Deadlift", "Gluteus")
+    # Deadlift/Gluteus は文献に角度別定量値がなく data_points=null → 文献参照のみ
+    assert lv2b["level"] == 0 and lv2b["label"] == "literature_referenced", lv2b
     lv3 = evidence_level("Squats", "Biceps")
     assert lv3["level"] == 0 and lv3["label"] == "model_estimate", lv3
 
