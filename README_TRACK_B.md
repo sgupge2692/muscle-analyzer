@@ -17,6 +17,7 @@
 | `backend/src/ml/model_evo.py` | `a60ebd5`（初出 `93bba09`） | 強化版1D-CNN（MuscleClassifier1DCNNEvo・未学習） |
 | `frontend/src/components/DiagnosisCard.tsx` | `d7a3a59` | 「診断・疲労」タブUI（逸脱診断・エビデンスレベル・velocity loss 表示） |
 | `frontend/src/components/AvatarViewer3DR3F.tsx` | `a12017d` | React Three Fiber メッシュ人型3Dビューア（トラックBフェーズ1） |
+| `frontend/src/components/AvatarViewer3D.tsx` | `de3f115`（初出，後続 `a062f6c`・`24a70cf`） | 旧・SVG静止3Dビューア（R3F版に置き換えられ未使用） |
 | `backend/scripts/test_deviation_diagnosis.py` | `9fe857e`（初出 `6ae3bf3`） | 逸脱診断・velocity metrics の最小単体テスト |
 
 ## 前提
