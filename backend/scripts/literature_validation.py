@@ -101,18 +101,21 @@ def main() -> None:
             system_raw = activations[muscle].to_numpy(dtype=float)
 
             # --- 正規化: 文献の基準条件（相対値が最大の点）で双方を正規化 ---
+            # 文献値が %MVC 等の絶対スケールでも基準条件で除算することで同一スケールに揃える
+            # （Pearson r はアフィン変換に不変だが、誤差列の比較には単位統一が必須）
             ref_idx = int(np.argmax(literature))
             ref_value = literature[ref_idx]
+            lit_norm = literature / ref_value if ref_value > 0 else literature
             system_norm = system_raw / system_raw[ref_idx] if system_raw[ref_idx] > 0 else system_raw
 
             # --- Pearson の r（正解データ vs システム推定）---
             if system_raw.std() < 1e-12:
                 r, p_val, note = float("nan"), float("nan"), "システム出力が一定（変調が効いていない疑い）"
             else:
-                r, p_val = pearsonr(system_norm, literature)
+                r, p_val = pearsonr(system_norm, lit_norm)
                 note = "n=3 の相関は参考値（角度別定量点が3点しかないため）" if len(points) == 3 else ""
 
-            max_abs_err = float(np.nanmax(np.abs(system_norm - literature)))
+            max_abs_err = float(np.nanmax(np.abs(system_norm - lit_norm)))
             summary_rows.append({
                 "exercise": exercise,
                 "muscle": muscle,
@@ -132,8 +135,9 @@ def main() -> None:
                     "knee_flexion_deg": p.get("knee_flexion_deg"),
                     "system_activation_raw": round(float(system_raw[i]), 4),
                     "system_norm": round(float(system_norm[i]), 4),
-                    "literature_norm": float(p["value"]),
-                    "error_norm": round(float(system_norm[i] - float(p["value"])), 4),
+                    "literature_raw": float(p["value"]),
+                    "literature_norm": round(float(lit_norm[i]), 4),
+                    "error_norm": round(float(system_norm[i] - float(lit_norm[i])), 4),
                     "source": entry.get("source"),
                     "data_point_note": p.get("note", ""),
                 })

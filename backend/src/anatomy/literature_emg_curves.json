@@ -59,12 +59,21 @@
   },
   "Deadlift": {
     "Quadriceps": {
-      "peak_angle_deg": null,
-      "width_deg": null,
-      "note": "四頭筋の活動は膝屈曲の大きい区間で有意に大きいことが報告されているが、ピーク角度の定量値は未記載（スタンス幅・体格で初期膝角度が変わるため）。非単調補正は適用しない。# TODO: 要文献確認",
-      "source": "Escamilla et al. 2002",
-      "data_points": null,
-      "validation_note": "角度区間別の定量値は公開全文（要購読）に記載がなく、入手可能な本文は定性記述のみ。角度位置の文献較正検証は不可",
+      "peak_angle_deg": 95,
+      "width_deg": 35,
+      "note": "四頭筋の活動は膝屈曲の大きい区間で有意に大きい（Escamilla et al. 2002 の定性記述）。Moreira et al. 2023 のデッドリフト3キーポジション（リフトオフ/ミッドプル/ロックアウト）等尺性最大牽引でも RF はリフトオフ（最大膝屈曲）で最大。peak_angle_deg=95 は論文に位置定義として明記されたリフトオフ位置の膝角度（解剖学的角度規約と同一で変換不要）。width_deg=35 は Squats/Quadriceps と同一の事前指定近似パラメータ（検証用3点からは逆算していない）",
+      "source": "Moreira et al. 2023",
+      "data_points": {
+        "unit": "%MVC（最大等尺性収縮に対する正規化、論文に明記された数値をそのまま転記）",
+        "derivation": "算術導出なし。Moreira et al. 2023（PMCID 12225233）抄録・本文に明記された生値をそのまま転記",
+        "reference_condition": "knee_angle_deg=95（リフトオフ位置、RF 92.46±18.42%MVC で最大）",
+        "points": [
+          {"angle_deg": 95, "position": "lift-off", "value": 92.46, "note": "92.46±18.42%MVC（論文に明記された数値）"},
+          {"angle_deg": 126, "position": "mid-pull", "value": 40.50, "note": "40.50±30.79%MVC（論文に明記された数値）。ロックアウトとの有意差なし(p=0.998)"},
+          {"angle_deg": 180, "position": "lockout", "value": 46.85, "note": "46.85±33.19%MVC（論文に明記された数値）"}
+        ]
+      },
+      "validation_note": "等尺性最大牽引（非動的・負荷1RM換算ではない）という条件差に注意。角度位置の検証には使用可",
       "aggregate_mean_mvic_pct": {
         "vastus_lateralis": 40,
         "vastus_medialis": 36,
@@ -75,22 +84,31 @@
     "Gluteus": {
       "peak_angle_deg": null,
       "width_deg": null,
-      "note": "大臀筋の活動は膝屈曲の大きい区間で有意に大きいことが報告されているが、ピーク角度の定量値は未記載。非単調補正は適用しない。# TODO: 要文献確認",
+      "note": "大臀筋の活動は膝屈曲の大きい区間で有意に大きいことが報告されているが（Escamilla et al. 2002 の定性記述）、角度別の定量値は未記載。角度別定量値を報告する Moreira et al. 2023 も測定筋に大臀筋を含まない。非単調補正は適用しない。# TODO: 要文献確認",
       "source": "Escamilla et al. 2002",
       "data_points": null,
-      "validation_note": "角度区間別の定量値は公開全文（要購読）に記載がなく、入手可能な本文は定性記述のみ。角度位置の文献較正検証は不可",
+      "validation_note": "角度区間別の定量値は公開全文（要購読）に記載がなく、入手可能な本文は定性記述のみ。角度別定量値を持つ代替文献（Moreira et al. 2023）でも大臀筋は未測定。角度位置の文献較正検証は不可",
       "aggregate_mean_mvic_pct": {
         "gluteus_maximus": 35,
         "note": "運動全体の平均%MVIC（角度別ではないため角度位置検証には使用不可。Martín-Fuentes et al. 2020 Table 2 の記載値を転記した近似値）"
       }
     },
     "Hamstring": {
-      "peak_angle_deg": null,
-      "width_deg": null,
-      "note": "膝屈曲の小さい区間（ロックアウト側）でやや高活性と報告されるが、定量値・ピーク角度の記載はなく角度依存性は小さい。非単調補正は適用しない",
-      "source": "Escamilla et al. 2002",
-      "data_points": null,
-      "validation_note": "角度区間別の定量値は公開全文（要購読）に記載がなく、入手可能な本文は定性記述のみ。角度位置の文献較正検証は不可",
+      "peak_angle_deg": 150,
+      "width_deg": 35,
+      "note": "BF はミッドプル（膝126°）で最大、リフトオフ（95°）よりロックアウト（180°）はやや低い（Moreira et al. 2023）。Escamilla et al. 2002 も「ハムストリングは低膝屈曲区間で大きい」「our hamstring data were highest between 0 and 60°KA（0°=膝完全伸展）」と本文記載。peak_angle_deg=150 は後者の区間（屈曲0–60°＝解剖学的角度120–180°）の中央値で、Moreira et al. の実測3点からは逆算していない。width_deg=35 は Squats/Quadriceps と同一の事前指定近似パラメータ",
+      "source": "Moreira et al. 2023",
+      "data_points": {
+        "unit": "%MVC（最大等尺性収縮に対する正規化、論文に明記された数値をそのまま転記）",
+        "derivation": "算術導出なし。Moreira et al. 2023（PMCID 12225233）抄録・本文に明記された生値をそのまま転記",
+        "reference_condition": "knee_angle_deg=126（ミッドプル位置、BF 92.27±16.45%MVC で最大）",
+        "points": [
+          {"angle_deg": 95, "position": "lift-off", "value": 58.22, "note": "58.22±21.33%MVC（論文に明記された数値）"},
+          {"angle_deg": 126, "position": "mid-pull", "value": 92.27, "note": "92.27±16.45%MVC（論文に明記された数値）"},
+          {"angle_deg": 180, "position": "lockout", "value": 67.94, "note": "67.94±28.08%MVC（論文に明記された数値）。ロックアウトとリフトオフの差は有意なし(p=0.922)"}
+        ]
+      },
+      "validation_note": "等尺性最大牽引（非動的）という条件差に注意。角度位置の検証には使用可",
       "aggregate_mean_mvic_pct": {
         "biceps_femoris": 28,
         "semitendinosus": 27,
@@ -98,12 +116,21 @@
       }
     },
     "Lower_Back": {
-      "peak_angle_deg": null,
-      "width_deg": null,
-      "note": "L3/T12傍脊柱筋の活動は膝屈曲の大きい区間で有意に大きいと報告されるが、ピーク角度の定量値は未記載。非単調補正は適用しない。# TODO: 要文献確認",
-      "source": "Escamilla et al. 2002",
-      "data_points": null,
-      "validation_note": "角度区間別の定量値は公開全文（要購読）に記載がなく、傍脊柱筋の%MVIC正規化値はレビュー論文にも記載がないため検証不可"
+      "peak_angle_deg": 95,
+      "width_deg": 50,
+      "note": "ERE（脊柱起立筋）はリフトオフ・ミッドプルで高く、ロックアウトで大幅に低下（Moreira et al. 2023）。Escamilla et al. 2002 も「L3/T12傍脊柱筋は高膝屈曲区間で有意に大きい」と報告。peak_angle_deg=95 は論文に位置定義として明記されたリフトオフ位置の膝角度。width_deg=50 は Squats/Gluteus と同一の事前指定近似パラメータ（検証用3点からは逆算していない）",
+      "source": "Moreira et al. 2023",
+      "data_points": {
+        "unit": "%MVC（最大等尺性収縮に対する正規化、論文に明記された数値をそのまま転記）",
+        "derivation": "算術導出なし。Moreira et al. 2023（PMCID 12225233）抄録・本文に明記された生値をそのまま転記",
+        "reference_condition": "knee_angle_deg=95（リフトオフ位置、ERE 91.46±11.94%MVC で最大）",
+        "points": [
+          {"angle_deg": 95, "position": "lift-off", "value": 91.46, "note": "91.46±11.94%MVC（論文に明記された数値）"},
+          {"angle_deg": 126, "position": "mid-pull", "value": 89.51, "note": "89.51±12.53%MVC（論文に明記された数値）。リフトオフとの有意差なし(p=0.999)"},
+          {"angle_deg": 180, "position": "lockout", "value": 36.79, "note": "36.79±19.90%MVC（論文に明記された数値）"}
+        ]
+      },
+      "validation_note": "等尺性最大牽引（非動的）という条件差に注意。角度位置の検証には使用可"
     }
   }
 }
