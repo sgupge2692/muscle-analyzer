@@ -69,6 +69,9 @@ app = FastAPI(
 
 # 認証ルーターを登録
 app.include_router(auth_router)
+# 解析履歴ルーターを登録（商用ブランチ専用機能・研究評価では未使用）
+from .history import router as history_router
+app.include_router(history_router)
 
 
 @app.websocket("/ws/stream")
