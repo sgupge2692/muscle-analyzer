@@ -79,8 +79,10 @@ export async function register(
   password: string,
   name: string = "",
 ): Promise<AuthToken> {
+  // credentials: "include" — リフレッシュトークン(HttpOnly Cookie)を受け取るために必須
   const res = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, name }),
   });
@@ -97,6 +99,7 @@ export async function login(
 ): Promise<AuthToken> {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
@@ -115,13 +118,34 @@ export async function getMe(token: string): Promise<UserProfile> {
   return res.json();
 }
 
-export async function refreshToken(token: string): Promise<AuthToken> {
-  const res = await fetch(`${API_URL}/auth/refresh`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error("トークン更新失敗");
-  return res.json();
+/**
+ * リフレッシュトークン（HttpOnly Cookie）でアクセストークンを更新する（S2/S3）。
+ * ローテーションされるため、成功時に新しいリフレッシュCookieが Set-Cookie で返る。
+ * 成功: AuthToken / 失敗（セッション切れ・未ログイン）: null
+ */
+export async function refreshSession(): Promise<AuthToken | null> {
+  try {
+    const res = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** ログアウト: リフレッシュトークンを失効させ，サーバー側Cookieも削除する */
+export async function logoutSession(): Promise<void> {
+  try {
+    await fetch(`${API_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    // ネットワークエラーでもローカルのトークン削除は続行
+  }
 }
 
 export async function changePassword(

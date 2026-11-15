@@ -9,7 +9,7 @@ import { CameraAnalyzer } from "@/components/CameraAnalyzer";
 import { AuthModal } from "@/components/AuthModal";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { OnboardingModal } from "@/components/OnboardingModal";
-import { TokenStore, getMe, saveHistory, type UserProfile, type HistorySnapshot } from "@/lib/api";
+import { TokenStore, getMe, refreshSession, logoutSession, saveHistory, type UserProfile, type HistorySnapshot } from "@/lib/api";
 import { BodyEstimation } from "@/lib/api";
 import { AnalyzeResult } from "@/types/analysis";
 
@@ -78,11 +78,19 @@ export default function Home() {
   const [savedFlash,   setSavedFlash]   = useState<string | null>(null);
 
   // 起動時にトークンをチェックしてユーザー情報を取得
+  // （S3: アクセストークンが無い/期限切れの場合，HttpOnly Cookieのリフレッシュトークンで再発行を試みる）
   useEffect(() => {
     const token = TokenStore.get();
     if (token && TokenStore.isValid(token)) {
       getMe(token).then(setUser).catch(() => TokenStore.clear());
+      return;
     }
+    refreshSession().then((t) => {
+      if (t) {
+        TokenStore.set(t.access_token);
+        getMe(t.access_token).then(setUser).catch(() => TokenStore.clear());
+      }
+    });
   }, []);
   const timerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -166,7 +174,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-[#555] tracking-wider">{user.email}</span>
               <button
-                onClick={() => { TokenStore.clear(); setUser(null); }}
+                onClick={() => { void logoutSession(); TokenStore.clear(); setUser(null); }}
                 className="text-[9px] text-[#444] hover:text-[#666] transition-colors"
               >
                 ログアウト

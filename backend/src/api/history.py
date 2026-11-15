@@ -68,6 +68,16 @@ def _save(user_id: str, entries: list[dict]) -> None:
     tmp.replace(path)
 
 
+def delete_user_history(user_id: str) -> bool:
+    """当該ユーザーの履歴ファイルを丸ごと削除する（アカウント削除時: S7）"""
+    path = _history_dir() / f"{user_id}.json"
+    try:
+        path.unlink()
+        return True
+    except FileNotFoundError:
+        return False
+
+
 def _check_rate_limit(user_id: str, limit: int = 30, window: float = 60.0) -> None:
     now = time.monotonic()
     hits = [h for h in _HITS.get(user_id, []) if now - h < window]

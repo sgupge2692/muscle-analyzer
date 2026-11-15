@@ -31,6 +31,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # アプリケーションコードをコピー
 COPY . .
 
+# 非rootユーザーで実行する（S8: コンテナ脱出時の被害を限定する）
+# 実行時に data/ 配下へ書き込む（users.json・history・usage・refresh_tokens）ため所有権を付与
+RUN addgroup --system appgroup \
+    && adduser --system --ingroup appgroup --uid 1001 appuser \
+    && mkdir -p /app/data/history /app/data/usage \
+    && chown -R appuser:appgroup /app/data
+
+USER appuser
+
 # ポート公開（Railway は PORT 環境変数を自動設定する）
 EXPOSE 8000
 
