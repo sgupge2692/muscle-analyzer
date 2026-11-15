@@ -39,3 +39,8 @@ backend/output/
 # ローカル開発用ユーザーDB（メールアドレス・パスワードハッシュが入る。絶対にコミットしない）
 backend/data/users.json
 backend/data/users.tmp
+
+# リフレッシュトークン（SHA-256ハッシュ）・利用枠カウンタ・解析履歴も同様にコミットしない
+backend/data/refresh_tokens.json
+backend/data/usage/
+backend/data/history/
