@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { analyzeVideo } from "@/lib/api";
 import { ResultPanel } from "@/components/ResultPanel";
 import { BodyEstimator } from "@/components/BodyEstimator";
@@ -490,6 +491,17 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* ── フッター ── */}
+      <footer className="mt-16 pt-6 border-t border-white/[0.04] flex items-center gap-5">
+        <Link href="/terms" className="text-[10px] text-[#3a3a3a] hover:text-[#666] transition-colors">
+          利用規約
+        </Link>
+        <Link href="/privacy" className="text-[10px] text-[#3a3a3a] hover:text-[#666] transition-colors">
+          プライバシーポリシー
+        </Link>
+        <span className="text-[10px] text-[#2a2a2a] ml-auto">Muscle Analyzer</span>
+      </footer>
     </div>
   );
 }
