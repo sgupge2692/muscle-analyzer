@@ -1,0 +1,11 @@
+{
+  "name": "Muscle Analyzer",
+  "short_name": "MuscleAnalyzer",
+  "description": "文献較正済みの筋肉活動推定とフォーム診断",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "lang": "ja",
+  "icons": []
+}
