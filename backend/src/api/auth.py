@@ -191,7 +191,9 @@ def create_access_token(user_id: str, email: str) -> str:
 # ── ユーザーストア ───────────────────────────────────────────
 # SUPABASE_URL と SUPABASE_SERVICE_KEY があればSupabase(PostgREST)、
 # なければJSONファイル（ローカル開発用）に保存する。
-_FILE_LOCK = threading.Lock()
+# RLock: ユーザーストアのメソッド内からも取得されるため再入可能にする必要がある
+# （例: _resolve_refresh_token がロック保持中に _FileUserStore.get を呼ぶ）
+_FILE_LOCK = threading.RLock()
 
 
 def _load_users() -> dict:
