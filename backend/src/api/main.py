@@ -2,6 +2,7 @@ import sys, json, shutil, tempfile, os, uuid, logging
 import time as _time
 import asyncio
 from pathlib import Path
+from typing import Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends, WebSocket
 from fastapi.security import HTTPBearer
 
@@ -69,6 +70,9 @@ app = FastAPI(
 
 # 認証ルーターを登録
 app.include_router(auth_router)
+# 解析履歴ルーターを登録（商用ブランチ専用機能・研究評価では未使用）
+from .history import router as history_router
+app.include_router(history_router)
 
 
 @app.websocket("/ws/stream")
@@ -98,8 +102,9 @@ origins = [o.strip() for o in _origins_env.split(",")]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_methods=["POST", "GET"],
-    allow_headers=["Content-Type", "Accept"],
+    allow_methods=["POST", "GET", "DELETE"],
+    allow_headers=["Content-Type", "Accept", "Authorization"],
+    allow_credentials=True,   # リフレッシュトークンCookie（HttpOnly）の送受信に必須
     max_age=600,
 )
 
@@ -111,6 +116,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"]         = "DENY"
     response.headers["X-XSS-Protection"]        = "1; mode=block"
     response.headers["Referrer-Policy"]          = "strict-origin-when-cross-origin"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"  # S9（HTTPS時のみ意味を持つ）
     return response
 
 # ── レートリミット（slowapi） ───────────────────────────────
@@ -142,6 +148,30 @@ except (ImportError, Exception) as e:
             def decorator(f): return f
             return decorator
     limiter = _DummyLimiter()
+
+# ── 本番認証・利用枠（S1） ──────────────────────────────────
+# ENV=production の場合は /analyze・/estimate_body に認証を必須化し，
+# 月次利用枠（usage.py・freeプランのみ）を強制する。開発環境ではオプション認証のまま。
+_IS_PRODUCTION = os.getenv("ENV", "development") == "production"
+
+
+async def _require_user_in_production(credentials) -> Optional[dict]:
+    """本番では有効なJWTを持つユーザーを返し，なければ401。開発環境は None を返す"""
+    if not _IS_PRODUCTION:
+        return None
+    if not credentials:
+        raise HTTPException(401, "認証が必要です。ログインしてください")
+    from api.auth import get_current_user
+    return await get_current_user(credentials)
+
+
+def _consume_quota(user_id: str) -> None:
+    """本番のみ月次利用枠を消費する（上限超過は429）"""
+    if not _IS_PRODUCTION:
+        return
+    from api.usage import check_and_consume
+    check_and_consume(user_id)
+
 
 # ── データロード ────────────────────────────────────────────
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
@@ -216,16 +246,19 @@ async def analyze(
     frame_skip: int = 2,       # フレームスキップ数（速度改善）
     credentials = Depends(security),   # オプション認証（未ログインでも使用可）
 ):
-    # ログイン済みの場合はユーザーIDをログに記録
-    current_user_id = None
-    if credentials:
+    # S1: 本番では認証必須（開発環境はオプション認証のまま）
+    user = await _require_user_in_production(credentials)
+    if user:
+        logger.info(f"認証済みリクエスト: user={user['id']}")
+        # 利用枠はバリデーション通過後に消費（濫用対策）
+        _consume_quota(user["id"])
+    elif credentials:
         try:
             from api.auth import _verify_jwt
             payload = _verify_jwt(credentials.credentials)
-            current_user_id = payload.get("sub")
-            logger.info(f"認証済みリクエスト: user={current_user_id}")
+            logger.info(f"認証済みリクエスト: user={payload.get('sub')}")
         except Exception:
-            pass  # 無効なトークンは無視（オプション認証のため）
+            pass  # 無効なトークンは無視（開発環境のオプション認証）
     if exercise not in MAPPING["exercise_muscle_mapping"]:
         raise HTTPException(400, f"未対応の種目です: {exercise}")
     if not (40.0 <= target_angle <= 170.0):
@@ -359,6 +392,7 @@ async def estimate_body(
     front_image: UploadFile = File(...),
     side_image:  UploadFile = File(None),
     height_cm:   float = 170.0,
+    credentials = Depends(security),   # S1: 本番では認証必須
 ):
     """
     正面・側面写真から体型パラメータを推定する（フェーズ2機能）
@@ -373,6 +407,7 @@ async def estimate_body(
         leg_ratio:         脚長/身長比
         body_scale:        全体スケール係数（筋肉活動推定の重み補正に使用）
     """
+    await _require_user_in_production(credentials)  # S1
     if not (100.0 <= height_cm <= 220.0):
         raise HTTPException(400, "height_cmは100〜220の範囲で指定してください")
 

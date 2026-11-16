@@ -1,14 +1,41 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { AnalyzeResult } from "@/types/analysis";
+import Link from "next/link";
 import { analyzeVideo } from "@/lib/api";
 import { ResultPanel } from "@/components/ResultPanel";
 import { BodyEstimator } from "@/components/BodyEstimator";
 import { CameraAnalyzer } from "@/components/CameraAnalyzer";
 import { AuthModal } from "@/components/AuthModal";
-import { TokenStore, getMe, type UserProfile } from "@/lib/api";
+import { HistoryPanel } from "@/components/HistoryPanel";
+import { OnboardingModal } from "@/components/OnboardingModal";
+import { TokenStore, getMe, refreshSession, logoutSession, saveHistory, type UserProfile, type HistorySnapshot } from "@/lib/api";
 import { BodyEstimation } from "@/lib/api";
+import { AnalyzeResult } from "@/types/analysis";
+
+// 解析結果を履歴保存用のスナップショットに変換する（全レップの筋群別平均）
+function buildSnapshot(result: AnalyzeResult): HistorySnapshot {
+  const sums: Record<string, { total: number; n: number }> = {};
+  for (const repMap of Object.values(result.activations)) {
+    for (const [muscle, v] of Object.entries(repMap)) {
+      if (!sums[muscle]) sums[muscle] = { total: 0, n: 0 };
+      sums[muscle].total += v;
+      sums[muscle].n += 1;
+    }
+  }
+  const muscles: Record<string, number> = {};
+  for (const [m, { total, n }] of Object.entries(sums)) muscles[m] = n ? total / n : 0;
+  const evidence_levels: Record<string, number> = {};
+  for (const [m, info] of Object.entries(result.evidence_levels ?? {})) {
+    evidence_levels[m] = info.level;
+  }
+  return {
+    exercise:      result.exercise,
+    total_reps:    result.total_reps,
+    muscles,
+    evidence_levels,
+  };
+}
 
 const PROGRESS_STEPS = [
   { pct: 10,  label: "動画を受信中..." },
@@ -47,13 +74,23 @@ export default function Home() {
   const [inputMode, setInputMode] = useState<"upload" | "camera">("upload");
   const [user,         setUser]         = useState<UserProfile | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [historyKey,   setHistoryKey]   = useState(0);
+  const [savedFlash,   setSavedFlash]   = useState<string | null>(null);
 
   // 起動時にトークンをチェックしてユーザー情報を取得
+  // （S3: アクセストークンが無い/期限切れの場合，HttpOnly Cookieのリフレッシュトークンで再発行を試みる）
   useEffect(() => {
     const token = TokenStore.get();
     if (token && TokenStore.isValid(token)) {
       getMe(token).then(setUser).catch(() => TokenStore.clear());
+      return;
     }
+    refreshSession().then((t) => {
+      if (t) {
+        TokenStore.set(t.access_token);
+        getMe(t.access_token).then(setUser).catch(() => TokenStore.clear());
+      }
+    });
   }, []);
   const timerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -86,6 +123,18 @@ export default function Home() {
       setPct(100);
       setStepLabel("解析完了");
       setResult(data);
+
+      // ログイン中なら解析結果を履歴に自動保存（動画ではなく数値のみ）
+      const token = TokenStore.get();
+      if (token && TokenStore.isValid(token) && data.total_reps > 0) {
+        saveHistory(token, buildSnapshot(data))
+          .then(() => {
+            setHistoryKey(k => k + 1);
+            setSavedFlash("履歴に保存しました");
+            setTimeout(() => setSavedFlash(null), 4000);
+          })
+          .catch(() => {}); // 保存失敗は解析結果に影響させない
+      }
     } catch (e) {
       clearFakeProgress();
       setError(String(e));
@@ -125,7 +174,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-[#555] tracking-wider">{user.email}</span>
               <button
-                onClick={() => { TokenStore.clear(); setUser(null); }}
+                onClick={() => { void logoutSession(); TokenStore.clear(); setUser(null); }}
                 className="text-[9px] text-[#444] hover:text-[#666] transition-colors"
               >
                 ログアウト
@@ -416,6 +465,21 @@ export default function Home() {
           onReset={handleReset}
         />
       )}
+
+      {/* ── 保存完了フラッシュ ── */}
+      {savedFlash && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+          bg-[#0f0f0f] border border-[#1a1a1a] text-white text-xs px-4 py-2.5 rounded-xl">
+          {savedFlash}
+        </div>
+      )}
+
+      {/* ── 解析履歴（ログイン中のみ内容が表示される） ── */}
+      <HistoryPanel refreshKey={historyKey} />
+
+      {/* ── 初回オンボーディング ── */}
+      <OnboardingModal />
+
       {/* ── 認証モーダル ── */}
       {showAuthModal && (
         <div
@@ -435,6 +499,17 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* ── フッター ── */}
+      <footer className="mt-16 pt-6 border-t border-white/[0.04] flex items-center gap-5">
+        <Link href="/terms" className="text-[10px] text-[#3a3a3a] hover:text-[#666] transition-colors">
+          利用規約
+        </Link>
+        <Link href="/privacy" className="text-[10px] text-[#3a3a3a] hover:text-[#666] transition-colors">
+          プライバシーポリシー
+        </Link>
+        <span className="text-[10px] text-[#2a2a2a] ml-auto">Muscle Analyzer</span>
+      </footer>
     </div>
   );
 }

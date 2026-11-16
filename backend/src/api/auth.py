@@ -31,7 +31,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, field_validator
 
@@ -46,6 +46,12 @@ BCRYPT_COST     = 12  # 2^12 = 4096回ハッシュ（十分な計算コスト）
 # ユーザーDBのパス（本番はPostgreSQL等に移行予定、現在はJSONファイル）
 BACKEND_DIR   = Path(__file__).resolve().parent.parent.parent
 USERS_DB_PATH = Path(os.getenv("USERS_DB_PATH", str(BACKEND_DIR / "data" / "users.json")))
+
+# リフレッシュトークン（S2）: 不透明トークン（ランダム文字列）をサーバー側で
+# SHA-256ハッシュ保存する。JWTと違い即時失効可能。
+REFRESH_EXPIRE_DAYS = int(os.getenv("REFRESH_EXPIRE_DAYS", "30"))
+REFRESH_DB_PATH     = Path(os.getenv("REFRESH_DB_PATH", str(BACKEND_DIR / "data" / "refresh_tokens.json")))
+REFRESH_COOKIE_NAME = "ma_refresh"
 
 _INSECURE_SECRETS = {"", "your-super-secret-key-change-this-in-production"}
 
@@ -185,7 +191,9 @@ def create_access_token(user_id: str, email: str) -> str:
 # ── ユーザーストア ───────────────────────────────────────────
 # SUPABASE_URL と SUPABASE_SERVICE_KEY があればSupabase(PostgREST)、
 # なければJSONファイル（ローカル開発用）に保存する。
-_FILE_LOCK = threading.Lock()
+# RLock: ユーザーストアのメソッド内からも取得されるため再入可能にする必要がある
+# （例: _resolve_refresh_token がロック保持中に _FileUserStore.get を呼ぶ）
+_FILE_LOCK = threading.RLock()
 
 
 def _load_users() -> dict:
@@ -331,6 +339,139 @@ def _get_store():
     return _FileUserStore()
 
 
+# ── リフレッシュトークンストア（S2） ────────────────────────
+# 不透明トークン（secrets.token_urlsafe）を発行し，SHA-256ハッシュのみを保存する。
+# 平文トークンは Cookie(HttpOnly) と応答を通じて一度だけクライアントへ渡す。
+# 保存先はJSONファイル（原子的置換書き込み）。Supabaseテーブルへの移行は open_questions 参照。
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _load_refresh() -> dict:
+    if not REFRESH_DB_PATH.exists():
+        return {}
+    try:
+        with open(REFRESH_DB_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"リフレッシュトークン読込失敗: {e}")
+        return {}
+
+
+def _save_refresh(data: dict) -> None:
+    """期限切れエントリを掃除してから原子的置換で保存する"""
+    now = int(time.time())
+    pruned = {h: v for h, v in data.items() if v.get("expires_at", 0) > now}
+    REFRESH_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = REFRESH_DB_PATH.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(pruned, f, indent=1, ensure_ascii=False)
+    os.replace(tmp, REFRESH_DB_PATH)
+
+
+def create_refresh_token(user_id: str) -> str:
+    token = secrets.token_urlsafe(48)
+    now = int(time.time())
+    with _FILE_LOCK:
+        data = _load_refresh()
+        data[_hash_token(token)] = {
+            "user_id":    user_id,
+            "created_at": now,
+            "expires_at": now + REFRESH_EXPIRE_DAYS * 86400,
+            "revoked":    False,
+        }
+        _save_refresh(data)
+    return token
+
+
+def _resolve_refresh_token(token: str) -> dict:
+    """リフレッシュトークンを検証しユーザーを返す。
+    失効済みトークンの再使用を検知した場合，そのユーザーの全トークンを失効させる（盗難検知）。"""
+    h = _hash_token(token)
+    with _FILE_LOCK:
+        data = _load_refresh()
+        entry = data.get(h)
+        if entry is None:
+            raise HTTPException(401, "リフレッシュトークンが無効です")
+        if entry.get("revoked"):
+            # 再使用検知: 盗難の可能性が高いため該当ユーザーの全セッションを失効させる
+            uid = entry.get("user_id", "")
+            for v in data.values():
+                if v.get("user_id") == uid:
+                    v["revoked"] = True
+            _save_refresh(data)
+            logger.warning(f"リフレッシュトークン再使用を検知（全失効）: user={uid}")
+            raise HTTPException(401, "セッションが失効しました。再度ログインしてください")
+        if entry.get("expires_at", 0) < time.time():
+            raise HTTPException(401, "セッションの有効期限が切れました。再度ログインしてください")
+        user = _get_store().get(entry["user_id"])
+        if not user:
+            raise HTTPException(401, "ユーザーが見つかりません")
+    return user
+
+
+def rotate_refresh_token(old_token: str, user: dict) -> str:
+    """旧トークンを失効させて新トークンを発行する（ローテーション）"""
+    h = _hash_token(old_token)
+    with _FILE_LOCK:
+        data = _load_refresh()
+        if h in data:
+            data[h]["revoked"] = True
+        _save_refresh(data)
+    return create_refresh_token(user["id"])
+
+
+def revoke_refresh_token(token: str) -> bool:
+    h = _hash_token(token)
+    with _FILE_LOCK:
+        data = _load_refresh()
+        entry = data.get(h)
+        if entry is not None and not entry.get("revoked"):
+            entry["revoked"] = True
+            _save_refresh(data)
+            return True
+    return False
+
+
+def revoke_all_refresh_tokens(user_id: str) -> None:
+    with _FILE_LOCK:
+        data = _load_refresh()
+        changed = False
+        for v in data.values():
+            if v.get("user_id") == user_id and not v.get("revoked"):
+                v["revoked"] = True
+                changed = True
+        if changed:
+            _save_refresh(data)
+
+
+def delete_all_refresh_tokens(user_id: str) -> None:
+    """ユーザーのリフレッシュトークンエントリを完全に削除する（アカウント削除時）"""
+    with _FILE_LOCK:
+        data = _load_refresh()
+        kept = {h: v for h, v in data.items() if v.get("user_id") != user_id}
+        if len(kept) != len(data):
+            _save_refresh(kept)
+
+
+def _set_refresh_cookie(response, token: str) -> None:
+    """リフレッシュトークンを HttpOnly Cookie として設定する（S3）"""
+    response.set_cookie(
+        REFRESH_COOKIE_NAME,
+        token,
+        max_age=REFRESH_EXPIRE_DAYS * 86400,
+        httponly=True,
+        secure=os.getenv("ENV", "development") == "production",
+        samesite="lax",
+        path="/auth",   # /auth/* へのリクエストでのみ送信される
+    )
+
+
+def _clear_refresh_cookie(response) -> None:
+    response.delete_cookie(REFRESH_COOKIE_NAME, path="/auth")
+
+
 # ── タイミング攻撃対策用ダミーハッシュ ──────────────────────
 # 存在しないメールでもbcrypt検証を1回走らせ、応答時間の差でユーザー有無を推測させない
 _DUMMY_HASH: Optional[str] = None
@@ -380,7 +521,7 @@ async def get_current_user(
 # bcrypt・DBアクセスはブロッキング処理なので asyncio.to_thread で別スレッドに逃がす
 # （同じサーバーで動くWebSocketのリアルタイム解析をログイン処理で止めないため）
 @router.post("/register", response_model=TokenResponse, status_code=201)
-async def register(body: RegisterRequest, request: Request):
+async def register(body: RegisterRequest, request: Request, response: Response):
     """新規ユーザー登録（パスワードはbcryptでハッシュ化して保存）"""
     _require_secret()
     _check_rate_limit(request)
@@ -403,11 +544,13 @@ async def register(body: RegisterRequest, request: Request):
         raise HTTPException(409, "このメールアドレスはすでに登録されています")
 
     logger.info(f"新規ユーザー登録: id={user_id}")
+    refresh = await asyncio.to_thread(create_refresh_token, user_id)
+    _set_refresh_cookie(response, refresh)
     return TokenResponse(access_token=create_access_token(user_id, email))
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, request: Request):
+async def login(body: LoginRequest, request: Request, response: Response):
     """ログイン（パスワード検証してJWT発行）"""
     _require_secret()
     _check_rate_limit(request)
@@ -424,6 +567,8 @@ async def login(body: LoginRequest, request: Request):
         raise HTTPException(401, "メールアドレスまたはパスワードが間違っています")
 
     logger.info(f"ログイン成功: id={user['id']}")
+    refresh = await asyncio.to_thread(create_refresh_token, user["id"])
+    _set_refresh_cookie(response, refresh)
     return TokenResponse(access_token=create_access_token(user["id"], user["email"]))
 
 
@@ -438,10 +583,48 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(current_user: dict = Depends(get_current_user)):
-    """アクセストークンを更新する（有効なトークンが必要）"""
-    logger.info(f"トークン更新: id={current_user['id']}")
-    return TokenResponse(access_token=create_access_token(current_user["id"], current_user["email"]))
+async def refresh_token(
+    request: Request,
+    response: Response,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+):
+    """トークンを更新する。
+
+    推奨フロー（S2/S3）: HttpOnly Cookie（ma_refresh）のリフレッシュトークンで更新。
+    ローテーション付き（旧トークン失効→新トークン発行）。再使用は盗難検知として全失効。
+    移行期間の従来方式: 有効なアクセストークンでの更新も引き続き受け付ける。
+    """
+    _require_secret()
+    _check_rate_limit(request)
+
+    raw = request.cookies.get(REFRESH_COOKIE_NAME)
+    if raw:
+        user = await asyncio.to_thread(_resolve_refresh_token, raw)
+        new_refresh = await asyncio.to_thread(rotate_refresh_token, raw, user)
+        _set_refresh_cookie(response, new_refresh)
+        logger.info(f"トークン更新（リフレッシュローテーション）: id={user['id']}")
+        return TokenResponse(access_token=create_access_token(user["id"], user["email"]))
+
+    # 移行期間: 従来の「アクセストークンによる更新」（ローテーションなし）
+    if credentials:
+        payload = _verify_jwt(credentials.credentials)
+        user = await asyncio.to_thread(_get_store().get, payload["sub"])
+        if not user:
+            raise HTTPException(401, "ユーザーが見つかりません")
+        logger.info(f"トークン更新（アクセストークン経由・移行方式）: id={user['id']}")
+        return TokenResponse(access_token=create_access_token(user["id"], user["email"]))
+
+    raise HTTPException(401, "更新用のトークンがありません")
+
+
+@router.post("/logout", status_code=200)
+async def logout(request: Request, response: Response):
+    """ログアウト: リフレッシュトークンを失効させCookieを削除する"""
+    raw = request.cookies.get(REFRESH_COOKIE_NAME)
+    if raw:
+        await asyncio.to_thread(revoke_refresh_token, raw)
+    _clear_refresh_cookie(response)
+    return {"message": "ログアウトしました"}
 
 
 class ChangePasswordRequest(BaseModel):
@@ -473,13 +656,23 @@ async def change_password(
         raise HTTPException(401, "現在のパスワードが間違っています")
     hashed = await asyncio.to_thread(_hash_password, body.new_password)
     await asyncio.to_thread(_get_store().update_password, current_user["id"], hashed)
+    # パスワード変更後は既存の全セッション（リフレッシュトークン）を失効させる
+    await asyncio.to_thread(revoke_all_refresh_tokens, current_user["id"])
     logger.info(f"パスワード変更: id={current_user['id']}")
     return {"message": "パスワードを変更しました"}
 
 
 @router.delete("/account", status_code=200)
-async def delete_account(current_user: dict = Depends(get_current_user)):
-    """アカウントを削除する"""
-    await asyncio.to_thread(_get_store().delete, current_user["id"])
-    logger.info(f"アカウント削除: id={current_user['id']}")
+async def delete_account(response: Response, current_user: dict = Depends(get_current_user)):
+    """アカウントを削除する（ユーザー情報・関連データを一括削除: S7）"""
+    uid = current_user["id"]
+    # 循環import回避のため遅延import（history.py / usage.py は auth.py に依存する）
+    from .history import delete_user_history
+    from .usage import delete_user_usage
+    await asyncio.to_thread(delete_user_history, uid)
+    await asyncio.to_thread(delete_user_usage, uid)
+    await asyncio.to_thread(delete_all_refresh_tokens, uid)
+    await asyncio.to_thread(_get_store().delete, uid)
+    _clear_refresh_cookie(response)
+    logger.info(f"アカウント削除: id={uid}（履歴・利用枠・セッション含む）")
     return {"message": "アカウントを削除しました"}
