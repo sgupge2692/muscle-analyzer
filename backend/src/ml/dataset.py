@@ -8,11 +8,11 @@ ST-GCN入力形式 (N, C, T, V) = (サンプル数, 3, 30フレーム, 17関節)
 """
 
 import pickle
-import numpy as np
 from pathlib import Path
-from torch.utils.data import Dataset
-import torch
 
+import numpy as np
+import torch
+from torch.utils.data import Dataset
 
 # COCO17の隣接関係（ST-GCNのグラフ定義に使う）
 COCO17_EDGES = [

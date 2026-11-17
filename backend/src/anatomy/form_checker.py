@@ -7,9 +7,8 @@ form_checker.py
 """
 
 from dataclasses import dataclass
-from typing import Optional
+
 import pandas as pd
-import numpy as np
 
 # ──────────────────────────────────────────────
 # 種目×関節ごとの理想角度範囲（度）
@@ -109,9 +108,9 @@ class FormIssue:
 def check_form(
     features: pd.DataFrame,
     exercise: str,
-    rep_start: Optional[int] = None,
-    rep_end: Optional[int] = None,
-    target_angle: Optional[float] = None,
+    rep_start: int | None = None,
+    rep_end: int | None = None,
+    target_angle: float | None = None,
 ) -> list[dict]:
     """
     関節角度の理想範囲との比較によるフォーム診断
@@ -169,7 +168,6 @@ def check_form(
         # ボトムポジションの平均（最小値付近のフレームを対象）
         # スクワット・デッドリフトは最小角度が最も重要
         p10 = series.quantile(0.10)   # 下位10%の角度（ボトム付近）
-        p90 = series.quantile(0.90)   # 上位90%の角度（トップ付近）
 
         # ボトム時の問題チェック
         bottom_mean = series[series <= p10 * 1.05].mean()

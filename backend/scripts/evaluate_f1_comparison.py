@@ -36,9 +36,10 @@ sys.path.insert(0, str(BACKEND_DIR / "src"))
 sys.path.insert(0, str(BACKEND_DIR / "src" / "ml"))
 
 from dataset import MuscleMapDataset, normalize_frames  # noqa: E402
+
 from anatomy.angle_features import extract_angles  # noqa: E402
-from anatomy.muscle_activation import estimate_activation  # noqa: E402
 from anatomy.ml_predictor import COCO17_MEDIAPIPE  # noqa: E402
+from anatomy.muscle_activation import estimate_activation  # noqa: E402
 
 LABELED_PKL = BACKEND_DIR / "data/processed/musclemap_labeled.pkl"
 SKL_DIR = BACKEND_DIR / "data/raw/musclemap_benchmark/musclemap136_skl"
@@ -293,10 +294,8 @@ def main() -> None:
     try:
         rf_preds = _rf_probs(samples, test_idx, groups)
         conditions["RF_baseline"] = binarize(rf_preds, CNN_THRESHOLD)
-        rf_available = True
     except Exception as e:
         print(f"RF baseline をスキップ: {e}")
-        rf_available = False
 
     rows = []
     for name, preds in conditions.items():

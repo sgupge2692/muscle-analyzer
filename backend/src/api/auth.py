@@ -16,23 +16,22 @@ auth.py — JWT認証 + bcryptパスワードハッシュ化モジュール
   - レート制限: /auth/login・/auth/register は IPごとに5回/分（メモリ内の簡易実装）
 """
 import asyncio
-import os
+import base64 as _b64
+import hashlib
+import hmac
 import json
+import logging
+import os
 import secrets
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import hashlib
-import hmac
-import base64 as _b64
-import time
-import logging
 from pathlib import Path
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends, Request, Response
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, field_validator
 
 logger = logging.getLogger("muscle_analyzer.auth")
@@ -175,7 +174,7 @@ def _verify_jwt(token: str) -> dict:
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(401, "トークンが無効です")
+        raise HTTPException(401, "トークンが無効です") from None
 
 
 def create_access_token(user_id: str, email: str) -> str:
@@ -219,11 +218,11 @@ def _norm_email(email: str) -> str:
 class _FileUserStore:
     """JSONファイル保存。ローカル開発用（Railway等ではデプロイのたびに消える）"""
 
-    def find_by_email(self, email: str) -> Optional[dict]:
+    def find_by_email(self, email: str) -> dict | None:
         with _FILE_LOCK:
             return next((u for u in _load_users().values() if u["email"].lower() == email), None)
 
-    def get(self, user_id: str) -> Optional[dict]:
+    def get(self, user_id: str) -> dict | None:
         with _FILE_LOCK:
             return _load_users().get(user_id)
 
@@ -263,7 +262,7 @@ class _SupabaseUserStore:
             "Content-Type": "application/json",
         }
 
-    def _request(self, method: str, query: str = "", body: Optional[dict] = None):
+    def _request(self, method: str, query: str = "", body: dict | None = None):
         data = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(self.base + query, data=data, method=method, headers=self.headers)
         try:
@@ -279,7 +278,7 @@ class _SupabaseUserStore:
             return e.code, payload
         except (urllib.error.URLError, TimeoutError, OSError) as e:
             logger.error(f"Supabase接続エラー: {e}")
-            raise HTTPException(503, "ユーザーDBに接続できません。しばらくしてからお試しください")
+            raise HTTPException(503, "ユーザーDBに接続できません。しばらくしてからお試しください") from e
 
     @staticmethod
     def _fail(status: int, payload) -> None:
@@ -289,17 +288,17 @@ class _SupabaseUserStore:
         logger.error(f"Supabaseエラー status={status} code={code} message={msg}")
         raise HTTPException(503, "ユーザーDBでエラーが発生しました")
 
-    def _select(self, column: str, value: str) -> Optional[dict]:
+    def _select(self, column: str, value: str) -> dict | None:
         q = f"?{column}=eq.{urllib.parse.quote(value, safe='')}&select=*&limit=1"
         status, rows = self._request("GET", q)
         if status != 200:
             self._fail(status, rows)
         return rows[0] if rows else None
 
-    def find_by_email(self, email: str) -> Optional[dict]:
+    def find_by_email(self, email: str) -> dict | None:
         return self._select("email", email)
 
-    def get(self, user_id: str) -> Optional[dict]:
+    def get(self, user_id: str) -> dict | None:
         return self._select("id", user_id)
 
     def create(self, user: dict) -> bool:
@@ -474,7 +473,7 @@ def _clear_refresh_cookie(response) -> None:
 
 # ── タイミング攻撃対策用ダミーハッシュ ──────────────────────
 # 存在しないメールでもbcrypt検証を1回走らせ、応答時間の差でユーザー有無を推測させない
-_DUMMY_HASH: Optional[str] = None
+_DUMMY_HASH: str | None = None
 
 
 def _get_dummy_hash() -> str:
@@ -505,7 +504,7 @@ def _check_rate_limit(request: Request, limit: int = 5, window: int = 60) -> Non
 
 # ── 認証依存関係 ─────────────────────────────────────────────
 async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> dict:
     """JWTを検証して現在のユーザーを返す（Depends で使用）"""
     if not credentials:
@@ -586,7 +585,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 async def refresh_token(
     request: Request,
     response: Response,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ):
     """トークンを更新する。
 

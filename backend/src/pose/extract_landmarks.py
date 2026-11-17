@@ -1,11 +1,10 @@
+import csv
+from pathlib import Path
+
 import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-from pathlib import Path
-import csv
-from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 
 LANDMARK_NAMES = [
     "nose","left_eye_inner","left_eye","left_eye_outer",
@@ -26,7 +25,7 @@ def extract_landmarks(
     video_path: str,
     output_csv: str,
     frame_skip: int = 2,       # フレームスキップ数（2=1フレームおきに処理、速度2倍）
-    max_frames: Optional[int] = None,  # 最大処理フレーム数（Noneで全フレーム）
+    max_frames: int | None = None,  # 最大処理フレーム数（Noneで全フレーム）
 ) -> int:
     """
     動画からMediaPipeでランドマークを抽出してCSVに保存する

@@ -5,14 +5,12 @@ heatmap_renderer.py
 筋肉名は muscle_mapping.json の muscle_groups と完全一致させること。
 フロントの MuscleHeatmap.tsx と同じSVGパスを使用。
 """
-import colorsys
+import json
 from pathlib import Path
-from typing import Dict
-
 
 # ── 人体SVGパス（200×420 viewBox、全20筋群対応） ──────────────────
 # muscle_mapping.json の筋群名と完全一致させること
-MUSCLE_SHAPES: Dict[str, str] = {
+MUSCLE_SHAPES: dict[str, str] = {
     # ── 下半身（前面） ──
     "Quadriceps":  (
         '<ellipse cx="72" cy="268" rx="21" ry="44" />'
@@ -120,7 +118,7 @@ BODY_OUTLINE = """
 """
 
 # 日本語表示名
-MUSCLE_NAMES_JA: Dict[str, str] = {
+MUSCLE_NAMES_JA: dict[str, str] = {
     "Quadriceps":          "大腿四頭筋",
     "Hamstring":           "ハムストリング",
     "Gluteus":             "大臀筋",
@@ -158,7 +156,7 @@ def activation_to_color(v: float, alpha: float = 1.0) -> str:
     return f"rgba({r},{g},{b},{alpha})"
 
 
-def render_svg(activations: Dict[str, float]) -> str:
+def render_svg(activations: dict[str, float]) -> str:
     """
     筋肉活動マップをSVG文字列として返す（APIレスポンス・フロント埋め込み用）
     """
@@ -173,7 +171,7 @@ def render_svg(activations: Dict[str, float]) -> str:
             + "\n"
         )
     return (
-        f'''<svg viewBox="0 0 200 420" xmlns="http://www.w3.org/2000/svg">'''
+        '''<svg viewBox="0 0 200 420" xmlns="http://www.w3.org/2000/svg">'''
         + BODY_OUTLINE
         + shapes_svg
         + "</svg>"
@@ -181,7 +179,7 @@ def render_svg(activations: Dict[str, float]) -> str:
 
 
 def render_html(
-    activations: Dict[str, float],
+    activations: dict[str, float],
     title: str = "筋肉活動ヒートマップ",
     output: str = "output/heatmap.html",
 ) -> None:

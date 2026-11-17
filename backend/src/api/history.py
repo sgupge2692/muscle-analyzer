@@ -14,7 +14,6 @@ import os
 import time
 import uuid
 from pathlib import Path
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -35,7 +34,7 @@ class HistoryEntryIn(BaseModel):
     total_reps: int = Field(..., ge=0, le=999)
     muscles: dict[str, float] = Field(default_factory=dict)   # 筋群 -> 全レップ平均
     evidence_levels: dict[str, int] = Field(default_factory=dict)  # 筋群 -> level
-    note: Optional[str] = Field(None, max_length=500)
+    note: str | None = Field(None, max_length=500)
 
 
 class HistoryEntryOut(HistoryEntryIn):

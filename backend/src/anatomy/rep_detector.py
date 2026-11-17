@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from scipy.signal import find_peaks, peak_prominences
 
 
@@ -15,7 +14,8 @@ def load_knee_angles(csv_path: str) -> pd.Series:
         ankle = [row['right_ankle_x'], row['right_ankle_y']]
         import numpy as _np
         hip, knee, ankle = _np.array(hip), _np.array(knee), _np.array(ankle)
-        v1 = hip - knee; v2 = ankle - knee
+        v1 = hip - knee
+        v2 = ankle - knee
         cos_a = _np.dot(v1,v2)/(_np.linalg.norm(v1)*_np.linalg.norm(v2)+1e-8)
         angles.append(_np.degrees(_np.arccos(_np.clip(cos_a,-1,1))))
     s = pd.Series(angles).ffill().bfill()
@@ -39,7 +39,7 @@ def detect_reps(angles: pd.Series,
 
     reps = []
     rep_count = 0
-    for peak, prom in zip(peaks, prominences):
+    for peak, prom in zip(peaks, prominences, strict=False):
         angle_at_bottom = float(angles.iloc[peak])
 
         # 角度フィルタ：人体的にありえない値を除外
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     visualize_reps(angles, reps, OUTPUT_IMG)
 
-    import csv, pathlib
+    import csv
     REPS_CSV = "data/processed/reps.csv"
     with open(REPS_CSV, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["rep","start_frame","end_frame","bottom_frame","min_angle","prominence"])

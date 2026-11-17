@@ -33,6 +33,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,8 +45,9 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BACKEND_DIR / "src"))
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from anatomy.muscle_activation import _load_literature_curves, estimate_activation  # noqa: E402
 from literature_validation import _active_muscles, _synthetic_features  # noqa: E402
+
+from anatomy.muscle_activation import _load_literature_curves, estimate_activation  # noqa: E402
 
 OUTPUT_DIR = BACKEND_DIR.parent / "docs" / "images"
 OUTPUT_STEM = "fig5_literature_calibration"
@@ -152,7 +154,7 @@ def main() -> None:
     r_values: dict[tuple[str, str], float] = {}
     # パネル配置: (行, 列) → (種目, 筋群)。(0,2) は全体凡例用に空ける
     positions = [(0, 0), (0, 1), (1, 0), (1, 1), (1, 2)]
-    for (row, col), (exercise, muscle) in zip(positions, pairs):
+    for (row, col), (exercise, muscle) in zip(positions, pairs, strict=False):
         ax = axes[row][col]
         entry = curves[exercise][muscle]
         r_values[(exercise, muscle)] = plot_pair(ax, exercise, muscle, entry, mapping)

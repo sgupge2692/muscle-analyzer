@@ -44,3 +44,7 @@ backend/data/users.tmp
 backend/data/refresh_tokens.json
 backend/data/usage/
 backend/data/history/
+
+# テスト実行汚染の退避ファイル（実行時生成。コミットしない）
+backend/data/users.json.bak*
+backend/data/refresh_tokens.json.bak*

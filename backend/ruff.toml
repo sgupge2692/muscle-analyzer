@@ -1,0 +1,25 @@
+line-length = 100
+target-version = "py313"
+extend-exclude = ["notebooks"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",  # 長い行は警告のみにしない（学習・可視化スクリプトの都合）
+    "UP015", # open() mode 明示は許容
+]
+
+[lint.per-file-ignores]
+"scripts/*" = ["E402"]
+"visualize_muscles.py" = ["E402"]
+# main.py / websocket_stream.py は .env を import 前に読む設計（auth.py が import 時に
+# JWT_SECRET を参照するため）。AGENTS.md の記載どおり、import 順を壊さないこと。
+"src/api/main.py" = ["E402"]
+"src/api/websocket_stream.py" = ["E402"]
+
+[lint.flake8-bugbear]
+# FastAPI の Depends / File / Query は引数デフォルトでの呼び出しが公式パターン
+extend-immutable-calls = ["fastapi.Depends", "fastapi.File", "fastapi.Query", "fastapi.Body"]
+
+[lint.isort]
+known-first-party = ["api", "anatomy", "ml"]

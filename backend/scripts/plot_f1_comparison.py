@@ -18,6 +18,7 @@ F1 micro・F1 macro の2指標で比較し、成功基準（F1 micro ≥ 0.93）
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -66,7 +67,7 @@ def main() -> None:
                         label="F1 macro")
 
     for bars, values in ((bars_micro, micro), (bars_macro, macro)):
-        for bar, value in zip(bars, values):
+        for bar, value in zip(bars, values, strict=False):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.008,
                     f"{value:.3f}", ha="center", va="bottom", fontsize=10)
 

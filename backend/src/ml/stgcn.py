@@ -13,10 +13,11 @@ ST-GCN (Spatial Temporal Graph Convolutional Network) — 改善版
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-# torch_geometric不要の自前GCN実装\uff08Kipf & Welling 2017\uff09
+
+
+# torch_geometric不要の自前GCN実装（Kipf & Welling 2017）
 class GCNConv(nn.Module):
-    """スパースグラフ畳み込み層\uff08torch_geometric不要版\uff09"""
+    """スパースグラフ畳み込み層（torch_geometric不要版）"""
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
         self.linear = nn.Linear(in_channels, out_channels, bias=True)
@@ -31,7 +32,6 @@ class GCNConv(nn.Module):
         agg = torch.zeros_like(x)
         agg.scatter_add_(0, col.unsqueeze(1).expand(-1, x.size(1)), x[row] * norm.unsqueeze(1))
         return self.linear(agg + x)
-import numpy as np
 
 
 # COCO17の隣接行列（骨格グラフ）
@@ -49,7 +49,7 @@ COCO17_EDGES = [
 
 def build_edge_index(num_nodes: int = 17) -> torch.Tensor:
     """双方向エッジのedge_indexを生成 shape: (2, E*2)"""
-    src, dst = zip(*COCO17_EDGES)
+    src, dst = zip(*COCO17_EDGES, strict=False)
     # 双方向にする
     edge_index = torch.tensor(
         [src + dst, dst + src], dtype=torch.long
@@ -227,7 +227,6 @@ class STGCN(nn.Module):
         Returns:
             (N, 20)
         """
-        N = x.shape[0]
         edge_index = self.edge_index.to(x.device)
 
         x = self.bn(x)

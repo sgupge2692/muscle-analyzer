@@ -1,10 +1,11 @@
+import os
+import urllib.request
+from pathlib import Path
+
 import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-import urllib.request
-from pathlib import Path
-import os
 
 # モデルのパス（すでにダウンロード済みなのでスキップされる）
 model_path = str(Path(__file__).resolve().parent / "pose_landmarker.task")

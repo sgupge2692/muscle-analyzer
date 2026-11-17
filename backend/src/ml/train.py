@@ -12,15 +12,13 @@
   - LR=5e-4に調整
 """
 
-import pickle
+from pathlib import Path
+
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Subset
-from pathlib import Path
-import numpy as np
-
 from dataset import MuscleMapDataset
 from model import MuscleClassifier1DCNN
+from torch.utils.data import DataLoader, Subset
 
 # ─── 設定 ───────────────────────────────────────────
 BASE_DIR     = Path(__file__).resolve().parent.parent.parent
@@ -164,7 +162,7 @@ def train():
     test_labels = torch.cat(test_labels)
     test_f1 = f1_score_multilabel(test_preds, test_labels)
     print(f"test_F1 (seen): {test_f1:.4f}")
-    print(f"RF baseline:    0.916")
+    print("RF baseline:    0.916")
 
 
 if __name__ == "__main__":

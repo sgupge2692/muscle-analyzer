@@ -12,9 +12,10 @@ MediaPipe33関節のangle_features.pyとは別に管理する（MuscleMap専用�
   合計: 10 × 4 - 2（asymmetry展開）+ 2 = 40（切り捨てて38）
 """
 import pickle
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 
 # COCO17関節のインデックス定義
 COCO = {

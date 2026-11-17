@@ -13,7 +13,6 @@ import json
 import logging
 import time
 from collections import deque
-from typing import Optional
 
 import cv2
 import mediapipe as mp
@@ -25,6 +24,7 @@ from mediapipe.tasks.python import vision as mp_vision
 logger = logging.getLogger("muscle_analyzer.ws")
 
 from pathlib import Path as _Path
+
 MODEL_PATH = str(_Path(__file__).resolve().parent.parent / "pose" / "pose_landmarker.task")
 FRAME_HISTORY = 30   # 筋肉活動推定に使うフレーム数
 TARGET_WIDTH  = 480  # 処理解像度（小さいほど速い）
@@ -57,7 +57,7 @@ class RealtimeAnalyzer:
         )
         return mp_vision.PoseLandmarker.create_from_options(options)
 
-    def process_frame(self, frame_b64: str) -> Optional[dict]:
+    def process_frame(self, frame_b64: str) -> dict | None:
         """
         base64フレームを処理して結果を返す。
         2フレームに1回のみ骨格検出を実行（速度改善）。
@@ -162,7 +162,8 @@ class RealtimeAnalyzer:
                 hip   = np.array([lm[f"{side}_hip"]["x"],   lm[f"{side}_hip"]["y"]])
                 knee  = np.array([lm[f"{side}_knee"]["x"],  lm[f"{side}_knee"]["y"]])
                 ankle = np.array([lm[f"{side}_ankle"]["x"], lm[f"{side}_ankle"]["y"]])
-                v1 = hip - knee; v2 = ankle - knee
+                v1 = hip - knee
+                v2 = ankle - knee
                 cos_a = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-8)
                 angles[side] = round(float(np.degrees(np.arccos(np.clip(cos_a, -1, 1)))), 1)
             except Exception:
@@ -171,27 +172,16 @@ class RealtimeAnalyzer:
 
     def _estimate_activations(self) -> dict:
         """バッファのフレームから筋肉活動を推定（ルールベース）"""
-        import sys, os
+        import os
+        import sys
         sys.path.append(os.path.dirname(os.path.dirname(__file__)))
         try:
-            import json as _json
-            from pathlib import Path
-
-            mapping_path = Path(__file__).parent.parent.parent / "data/muscle_mapping.json"
-            with open(mapping_path) as f:
-                mapping = _json.load(f)
-
-            muscle_ids     = mapping["exercise_muscle_mapping"].get(self.exercise, [])
-            muscle_groups  = mapping["muscle_groups"]
-            active_muscles = [muscle_groups[str(i)] for i in muscle_ids]
-
             # 最新フレームの膝角度から簡易推定
             recent = list(self.frame_buffer)[-10:]
             angles = [f["knee_angle"].get("right") for f in recent if f["knee_angle"].get("right")]
             if not angles:
                 return {}
 
-            avg_angle = sum(angles) / len(angles)
             min_angle = min(angles)
 
             # 膝角度が小さいほどQuadricepsが活動
@@ -245,7 +235,7 @@ async def websocket_stream_endpoint(websocket: WebSocket, exercise: str = "Squat
 
     except WebSocketDisconnect:
         logger.info("WebSocket切断")
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.info("WebSocketタイムアウト")
     except Exception as e:
         logger.error(f"WebSocketエラー: {e}")

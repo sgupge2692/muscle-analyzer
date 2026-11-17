@@ -11,8 +11,8 @@ compute_angle_features() の出力列:
   *_vel（各角度の角速度: フレーム間差分）
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 # 可視性スコアの閾値（これ未満のフレームはNaNとして扱う）
 VIS_THRESHOLD = 0.5

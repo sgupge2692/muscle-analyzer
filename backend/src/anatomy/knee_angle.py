@@ -1,7 +1,8 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
 matplotlib.rcParams['font.family'] = 'Hiragino Sans'
 
 df = pd.read_csv("data/processed/squat_landmarks.csv")

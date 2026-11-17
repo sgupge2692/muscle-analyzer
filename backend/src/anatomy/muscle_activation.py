@@ -1,8 +1,10 @@
-import pandas as pd
-import numpy as np
 import json
 import logging
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
 # 筋群ごとの「関連関節」と「角度が小さいほど収縮か大きいほど収縮か」の定義
 MUSCLE_JOINT_MAP = {
     # ── 下半身 ──────────────────────────────────────────────────
@@ -181,7 +183,7 @@ def estimate_activation(angle_features: pd.DataFrame,
                         body_scale: float = 1.0) -> pd.DataFrame:
     """
     筋肉活動強度を推定。
-    
+
     2段階アプローチ:
     1. 種目の基準重みがあればそれをベースに使う（バイオメカニクス的に正確）
     2. ない場合は関節角度の変化量（velocity）で動的に推定する
@@ -194,16 +196,15 @@ def estimate_activation(angle_features: pd.DataFrame,
     active_muscles: muscle_mapping.jsonから取得した筋群名リスト
     exercise: 種目名（基準重みの参照に使用）
     """
-    n_frames = len(angle_features)
     activations = {}
 
     # --- ステップ1: 基準重みが定義されている種目はそれを使う ---
     base_weights = EXERCISE_BASE_WEIGHTS.get(exercise, {})
-    
+
     if base_weights:
         # 対象筋群のうち基準重みがあるものを抽出
         target_weights = {m: base_weights[m] for m in active_muscles if m in base_weights}
-        
+
         if target_weights:
             # 基準重みを正規化（合計1.0）
             total = sum(target_weights.values())
@@ -222,7 +223,7 @@ def estimate_activation(angle_features: pd.DataFrame,
                         adjusted[m] = w * (1.0 - (body_scale - 1.0) * 0.1)
                 total_adj = sum(adjusted.values())
                 normalized_weights = {m: w / total_adj for m, w in adjusted.items()}
-            
+
             for muscle, base_w in normalized_weights.items():
                 # 動的な変調：文献EMGカーブがある筋群は角度「位置」ベース、
                 # それ以外は従来どおり角度「変化率」ベース（後方互換性維持）
@@ -234,14 +235,14 @@ def estimate_activation(angle_features: pd.DataFrame,
                 # ベース重み × 動的変調（0.8〜1.2の範囲）
                 raw = base_w * (0.8 + 0.4 * dynamic_mod)
                 activations[muscle] = pd.Series(raw, index=angle_features.index)
-            
+
             # 基準重みにない筋肉は動的推定で補完
             remaining = [m for m in active_muscles if m not in target_weights]
             for muscle in remaining:
                 dynamic_mod = _compute_dynamic_modifier(angle_features, muscle, window)
                 # 残りの筋肉は小さいスコアで追加（最大10%）
                 activations[muscle] = pd.Series(0.05 * dynamic_mod, index=angle_features.index)
-            
+
             return pd.DataFrame(activations)
 
     # --- ステップ2: フォールバック（旧来の関節角度ベース推定）---
@@ -281,7 +282,7 @@ def _compute_dynamic_modifier(features: pd.DataFrame, muscle: str, window: int) 
     """
     if muscle not in MUSCLE_JOINT_MAP:
         return pd.Series(0.5, index=features.index)
-    
+
     scores = []
     for joint_col, _ in MUSCLE_JOINT_MAP[muscle]:
         vel_col = f'{joint_col}_vel'
@@ -289,7 +290,7 @@ def _compute_dynamic_modifier(features: pd.DataFrame, muscle: str, window: int) 
             vel = features[vel_col].abs().ffill().bfill()
             vel_norm = (vel / (vel.max() + 1e-8)).rolling(window, center=True, min_periods=1).mean()
             scores.append(vel_norm)
-    
+
     if not scores:
         return pd.Series(0.5, index=features.index)
     return pd.concat(scores, axis=1).mean(axis=1).clip(0, 1)
@@ -305,7 +306,7 @@ def visualize_activation(activations: pd.DataFrame,
     fig, ax = plt.subplots(figsize=(14, 6))
 
     colors = plt.cm.tab20(np.linspace(0, 1, len(activations.columns)))
-    for col, color in zip(activations.columns, colors):
+    for col, color in zip(activations.columns, colors, strict=False):
         ax.plot(activations.index, activations[col],
                 label=col, linewidth=1.5, color=color)
 
@@ -321,7 +322,8 @@ def visualize_activation(activations: pd.DataFrame,
 
 
 if __name__ == "__main__":
-    import csv, pathlib, sys
+    import csv
+    import pathlib
 
     FEATURES_CSV = "data/processed/angle_features.csv"
     MAPPING_JSON = "data/muscle_mapping.json"

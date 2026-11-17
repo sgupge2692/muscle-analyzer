@@ -25,7 +25,17 @@
 
 ## テスト・検証
 
-- `backend/tests/` は空。pytest / lint / typecheck の設定は存在しない。
+- `backend/tests/` に pytest テストがある（`pytest.ini`、依存は `requirements-dev.txt`）:
+  ```bash
+  cd backend && ../.venv/bin/pytest          # テスト実行
+  cd backend && ../.venv/bin/ruff check .    # lint（設定は backend/ruff.toml）
+  ```
+  - pytest の環境変数隔離は conftest のモジュール import 時に行うこと（fixture 内だと
+    `.env` が先に読まれて本物の `data/users.json` に書き込まれる事故が起きる）
+- frontend の型チェック:
+  ```bash
+  cd frontend && npx tsc --noEmit
+  ```
 - 検証は実動作で: サーバー起動 → `GET /health`、`ENV=development` なら `/docs` で Swagger 確認。依存の整合は `python src/check_env.py`。
 
 ## フロントエンド
