@@ -5,6 +5,7 @@ MLモデルによる筋肉活動推定（改善版）
 対応モデル:
   - scikit-learn (RandomForest + MultiLabelBinarizer): muscle_classifier.pkl
   - PyTorch 1D-CNN: best_1dcnn.pt + muscle_id_map.json
+  - PyTorch ST-GCN: best_stgcn.pt（骨格グラフ構造を考慮したモデル）
 
 改善点:
   - predict_muscles_torch: normalize_framesのベクトル化版を使用
@@ -12,16 +13,19 @@ MLモデルによる筋肉活動推定（改善版）
   - キャッシュ機構を強化
 """
 import pickle
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 
 MODEL_PKL_PATH  = Path(__file__).parent.parent.parent / "data/processed/muscle_classifier.pkl"
 MODEL_PT_PATH   = Path(__file__).parent.parent.parent / "output/best_1dcnn.pt"
+MODEL_STGCN_PATH = Path(__file__).parent.parent.parent / "output/best_stgcn.pt"
 MUSCLE_MAP_PATH = Path(__file__).parent.parent.parent / "data/processed/muscle_id_map.json"
 
 _sklearn_cache = None
 _torch_cache   = None
+_stgcn_cache   = None
 
 # COCO17関節のMediaPipe名対応（MuscleMapはCOCO17形式）
 COCO17_MEDIAPIPE = [
@@ -104,8 +108,9 @@ def load_torch_model():
     if not MODEL_PT_PATH.exists():
         raise FileNotFoundError(f"PyTorchモデルが見つかりません: {MODEL_PT_PATH}")
 
-    import torch
     import sys
+
+    import torch
     sys.path.append(str(Path(__file__).parent.parent / "ml"))
     from model import MuscleClassifier1DCNN
 
@@ -200,3 +205,70 @@ def predict_muscles_torch(
 
 def is_torch_model_available() -> bool:
     return MODEL_PT_PATH.exists()
+
+
+# ── PyTorch ST-GCN モデル ───────────────────────────────────
+def load_stgcn_model():
+    """PyTorch ST-GCNモデルをロード（キャッシュ）"""
+    global _stgcn_cache
+    if _stgcn_cache is not None:
+        return _stgcn_cache
+
+    if not MODEL_STGCN_PATH.exists():
+        raise FileNotFoundError(f"ST-GCNモデルが見つかりません: {MODEL_STGCN_PATH}")
+
+    import sys
+
+    import torch
+    sys.path.append(str(Path(__file__).parent.parent / "ml"))
+    from stgcn import STGCN
+
+    model = STGCN()
+    state = torch.load(MODEL_STGCN_PATH, map_location="cpu", weights_only=True)
+    model.load_state_dict(state)
+    model.eval()
+    _stgcn_cache = model
+    return model
+
+
+def predict_muscles_stgcn(
+    landmarks_sequence: list[dict],
+    muscle_id_to_name: dict[int, str],
+) -> dict[str, float]:
+    """
+    3Dランドマーク時系列から筋肉活動スコアを推定（PyTorch ST-GCN版）
+
+    ST-GCNは1D-CNNと同一の前処理（(3, 30, 17)への正規化）を使用し、
+    COCO17の骨格グラフ構造を考慮した推論を行う。
+
+    Args:
+        landmarks_sequence: landmarks_csv_to_3d_sequence() の出力
+        muscle_id_to_name: {20筋肉ID: 筋肉名} のマッピング
+
+    Returns:
+        {筋肉名: 確率スコア(0〜1)} の辞書
+    """
+    import torch
+
+    if not landmarks_sequence:
+        return {}
+
+    # 1D-CNNと同一のベクトル化前処理 → (1, 3, 30, 17)
+    result = _vectorized_normalize(landmarks_sequence)
+    x = torch.tensor(result).unsqueeze(0)
+
+    model = load_stgcn_model()
+    with torch.no_grad():
+        logits = model(x)                    # (1, 20)
+        probs  = torch.sigmoid(logits)[0]    # (20,)
+
+    scores = {}
+    for muscle_id, prob in enumerate(probs.tolist()):
+        name = muscle_id_to_name.get(muscle_id, str(muscle_id))
+        scores[name] = round(prob, 4)
+
+    return scores
+
+
+def is_stgcn_model_available() -> bool:
+    return MODEL_STGCN_PATH.exists()

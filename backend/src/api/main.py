@@ -1,15 +1,19 @@
-import sys, json, shutil, tempfile, os, uuid, logging
-import time as _time
 import asyncio
+import json
+import logging
+import os
+import sys
+import tempfile
+import time as _time
+import uuid
 from pathlib import Path
-from typing import Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends, WebSocket
+
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, WebSocket
 from fastapi.security import HTTPBearer
 
 security = HTTPBearer(auto_error=False)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import pandas as pd
 
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -29,14 +33,15 @@ def _load_dotenv() -> None:
 _load_dotenv()  # auth.py が import 時に JWT_SECRET を読むため、他のimportより前に実行
 
 
-from pose.extract_landmarks import extract_landmarks, landmarks_csv_to_3d_sequence
 from anatomy.angle_features import compute_angle_features
-from anatomy.rep_detector import load_knee_angles, detect_reps
-from anatomy.muscle_activation import estimate_activation
-from anatomy.form_checker import check_form
 from anatomy.evidence_level import evidence_level
-from api.auth import router as auth_router, get_current_user
+from anatomy.form_checker import check_form
+from anatomy.muscle_activation import estimate_activation
+from anatomy.rep_detector import detect_reps, load_knee_angles
+from api.auth import get_current_user
+from api.auth import router as auth_router
 from api.websocket_stream import websocket_stream_endpoint
+from pose.extract_landmarks import extract_landmarks, landmarks_csv_to_3d_sequence
 
 # ── ロギング設定 ────────────────────────────────────────────
 logging.basicConfig(
@@ -72,6 +77,7 @@ app = FastAPI(
 app.include_router(auth_router)
 # 解析履歴ルーターを登録（商用ブランチ専用機能・研究評価では未使用）
 from .history import router as history_router
+
 app.include_router(history_router)
 
 
@@ -122,9 +128,9 @@ async def add_security_headers(request: Request, call_next):
 # ── レートリミット（slowapi） ───────────────────────────────
 try:
     from slowapi import Limiter
-    from slowapi.util import get_remote_address
     from slowapi.errors import RateLimitExceeded
     from slowapi.middleware import SlowAPIMiddleware
+    from slowapi.util import get_remote_address
 
     limiter = Limiter(key_func=get_remote_address)
     app.state.limiter = limiter
@@ -139,9 +145,9 @@ try:
 
     _rate_limit_available = True
     logger.info("レートリミット有効")
-except (ImportError, Exception) as e:
+except (ImportError, Exception):
     _rate_limit_available = False
-    logger.warning(f"slowapi未インストール。レートリミット無効（pip install slowapi で有効化）")
+    logger.warning("slowapi未インストール。レートリミット無効（pip install slowapi で有効化）")
 
     class _DummyLimiter:
         def limit(self, *a, **kw):
@@ -155,13 +161,12 @@ except (ImportError, Exception) as e:
 _IS_PRODUCTION = os.getenv("ENV", "development") == "production"
 
 
-async def _require_user_in_production(credentials) -> Optional[dict]:
+async def _require_user_in_production(credentials) -> dict | None:
     """本番では有効なJWTを持つユーザーを返し，なければ401。開発環境は None を返す"""
     if not _IS_PRODUCTION:
         return None
     if not credentials:
         raise HTTPException(401, "認証が必要です。ログインしてください")
-    from api.auth import get_current_user
     return await get_current_user(credentials)
 
 
@@ -286,14 +291,14 @@ async def analyze(
             logger.info(f"[計測] 骨格検出: {n_proc}フレーム処理 {_t_extract:.1f}s")
         except Exception as e:
             logger.error(f"ランドマーク抽出失敗: {e}", exc_info=True)
-            raise HTTPException(500, "動画の解析に失敗しました。別の動画をお試しください")
+            raise HTTPException(500, "動画の解析に失敗しました。別の動画をお試しください") from e
 
         # 2. 関節角度計算
         try:
             features = compute_angle_features(str(landmarks_csv))
         except Exception as e:
             logger.error(f"角度計算失敗: {e}", exc_info=True)
-            raise HTTPException(500, "角度計算に失敗しました")
+            raise HTTPException(500, "角度計算に失敗しました") from e
 
         # 3. レップ検出
         angles = load_knee_angles(str(landmarks_csv))
@@ -318,18 +323,30 @@ async def analyze(
         landmarks_3d = landmarks_3d_full[::LANDMARK_3D_STRIDE]
         logger.info(f"3Dランドマーク: {len(landmarks_3d_full)}フレーム → {len(landmarks_3d)}フレーム（stride={LANDMARK_3D_STRIDE}）")
 
-        # 6. MLモード（PyTorch CNN優先、なければscikit-learn）
+        # 6. MLモード（ST-GCN → PyTorch CNN → scikit-learn のフォールバック順）
+        ml_mode_name = None
         ml_scores = None
         if ml_mode:
             try:
-                from anatomy.ml_predictor import predict_muscles_torch, is_torch_model_available
-                if is_torch_model_available():
-                    muscle_id_map = {i: muscle_groups[str(i)] for i in range(len(muscle_groups))}
+                from anatomy.ml_predictor import (
+                    is_stgcn_model_available,
+                    is_torch_model_available,
+                    predict_muscles_stgcn,
+                    predict_muscles_torch,
+                )
+                muscle_id_map = {i: muscle_groups[str(i)] for i in range(len(muscle_groups))}
+                if is_stgcn_model_available():
+                    ml_scores = predict_muscles_stgcn(landmarks_3d_full, muscle_id_map)
+                    ml_mode_name = "stgcn"
+                    logger.info("PyTorch ST-GCN推論成功")
+                elif is_torch_model_available():
                     ml_scores = predict_muscles_torch(landmarks_3d_full, muscle_id_map)
+                    ml_mode_name = "cnn1d"
                     logger.info("PyTorch CNN推論成功")
                 elif _ml_available:
                     ml_scores = predict_muscles(features)
-                    logger.info("scikit-learn推論（CNNモデル未訓練）")
+                    ml_mode_name = "sklearn"
+                    logger.info("scikit-learn推論（NNモデル未訓練）")
             except Exception as e:
                 logger.warning(f"ML推論失敗: {e}")
 
@@ -379,6 +396,9 @@ async def analyze(
     }
     if ml_scores is not None:
         response["ml_scores"] = ml_scores
+    if ml_mode_name is not None:
+        # 追加フィールド（既存クライアントへの後方互換性のため追加のみ）
+        response["ml_mode"] = ml_mode_name
     # 追加フィールド（既存クライアントへの後方互換性のため追加のみ）
     response["evidence_levels"] = evidence
 
@@ -423,7 +443,7 @@ async def estimate_body(
         result = _estimate_body_from_images(front_content, side_content, height_cm)
     except Exception as e:
         logger.error(f"体型推定失敗: {e}", exc_info=True)
-        raise HTTPException(500, "体型推定に失敗しました")
+        raise HTTPException(500, "体型推定に失敗しました") from e
 
     return result
 
@@ -447,9 +467,9 @@ def _estimate_body_from_images(
     """
     import cv2
     import mediapipe as mp
+    import numpy as np
     from mediapipe.tasks import python as mp_python
     from mediapipe.tasks.python import vision as mp_vision
-    import numpy as np
 
     MODEL_PATH = str(Path(__file__).resolve().parent.parent / "pose" / "pose_landmarker.task")
 

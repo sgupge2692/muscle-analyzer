@@ -5,22 +5,27 @@ ST-GCN訓練スクリプト（改善版）
 改善点:
   - Early stopping（patience=20）
   - Gradient clipping（max_norm=1.0）
-  - num_workers=4で並列データロード
   - DataAugmentationをtrainセットに適用
   - BATCH_SIZE=64に拡大
   - EPOCHS=300に延長
   - LR=5e-4に調整（ST-GCNは複雑なのでやや小さめ）
+  - NUM_WORKERS=0に変更（2026-11-16。macOSでnum_workers=4×persistent_workersの
+    2loader構成がデッドロックし1エポックも完了しなかったため。データは
+    8,701件のpickleで小規模であり，単一プロセス読み込みで十分な速度）
+  - 再開機能（2026-11-17追加）。毎エポック後に全状態（モデル＋optimizer＋
+    scheduler＋進捗）を last_stgcn_full.pt に保存し，存在すればそこから厳密に
+    再開する。last_stgcn_full.pt が無くてログだけある場合（本機能導入前に中断
+    した2026-11-16実行が該当）は，ログから最終エポック・best val_F1・patience
+    を復元し，best_stgcn.pt の重みのみでウォーム再開する
 """
 
-import pickle
+from pathlib import Path
+
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Subset
-from pathlib import Path
-import numpy as np
-
 from dataset import MuscleMapDataset
 from stgcn import STGCN
+from torch.utils.data import DataLoader, Subset
 
 # ─── 設定 ───────────────────────────────────────────
 BASE_DIR     = Path(__file__).resolve().parent.parent.parent
@@ -28,13 +33,15 @@ LABELED_PKL  = BASE_DIR / "data/processed/musclemap_labeled.pkl"
 SKL_DIR      = BASE_DIR / "data/raw/musclemap_benchmark/musclemap136_skl"
 OUTPUT_DIR   = BASE_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
+FULL_CKPT    = OUTPUT_DIR / "last_stgcn_full.pt"
+LOG_PATH     = OUTPUT_DIR / "train_stgcn_20261116.log"  # 中断済み実行のログ
 
 BATCH_SIZE   = 64
 EPOCHS       = 300
 LR           = 5e-4
 THRESHOLD    = 0.5   # マルチラベルの閾値
 PATIENCE     = 20    # Early stopping
-NUM_WORKERS  = 4     # 並列データロード数
+NUM_WORKERS  = 0     # 単一プロセス読み込み（macOSのmulti-loaderデッドロック回避）
 DEVICE       = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 # ────────────────────────────────────────────────────
 
@@ -63,6 +70,32 @@ def f1_score_multilabel(preds: torch.Tensor, labels: torch.Tensor, threshold: fl
     recall    = tp / (tp + fn + 1e-8)
     f1 = 2 * precision * recall / (precision + recall + 1e-8)
     return f1.item()
+
+
+def recover_progress_from_log(log_path: Path):
+    """中断済み実行のログから (最終完了エポック, best val_F1, patience数) を復元する。
+
+    ログが無い/読めない場合は (0, 0.0, 0) を返す（最初から訓練）。
+    patience数 = bestエポックから最終エポックまでの経過エポック数。
+    """
+    if not log_path.exists():
+        return 0, 0.0, 0
+    epoch_f1: list[tuple[int, float]] = []
+    for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if line.startswith("Epoch ") and "val_F1:" in line:
+            try:
+                e = int(line.split()[1].split("/")[0])
+                f1 = float(line.rsplit("val_F1:", 1)[1].strip())
+                epoch_f1.append((e, f1))
+            except (ValueError, IndexError):
+                continue
+    if not epoch_f1:
+        return 0, 0.0, 0
+    last_epoch = max(e for e, _ in epoch_f1)
+    best_epoch, best_f1 = max(epoch_f1, key=lambda x: x[1])
+    patience_cnt = last_epoch - best_epoch
+    return last_epoch, best_f1, patience_cnt
 
 
 def train():
@@ -103,8 +136,34 @@ def train():
 
     best_val_f1  = 0.0
     patience_cnt = 0
+    start_epoch  = 1
 
-    for epoch in range(1, EPOCHS + 1):
+    # ── 再開処理 ──
+    if FULL_CKPT.exists():
+        ck = torch.load(FULL_CKPT, map_location=DEVICE, weights_only=False)
+        model.load_state_dict(ck["model"])
+        optimizer.load_state_dict(ck["optimizer"])
+        scheduler.load_state_dict(ck["scheduler"])
+        start_epoch  = int(ck["epoch"]) + 1
+        best_val_f1  = float(ck["best_val_f1"])
+        patience_cnt = int(ck["patience_cnt"])
+        print(f"→ last_stgcn_full.pt から厳密再開: epoch {start_epoch} から続行 "
+              f"(best_val_F1={best_val_f1:.4f}, patience={patience_cnt})")
+    else:
+        last_epoch, log_best_f1, log_patience = recover_progress_from_log(LOG_PATH)
+        if last_epoch > 0 and (OUTPUT_DIR / "best_stgcn.pt").exists():
+            model.load_state_dict(
+                torch.load(OUTPUT_DIR / "best_stgcn.pt", map_location=DEVICE, weights_only=True))
+            best_val_f1  = log_best_f1
+            patience_cnt = log_patience
+            start_epoch  = last_epoch + 1
+            for _ in range(last_epoch):   # schedulerを中断時点まで進める
+                scheduler.step()
+            print(f"→ ログからウォーム再開: epoch {start_epoch} から続行 "
+                  f"(best_val_F1={best_val_f1:.4f}, patience={patience_cnt}, "
+                  f"optimizer状態は初期化)")
+
+    for epoch in range(start_epoch, EPOCHS + 1):
         # ── 訓練 ──
         model.train()
         train_loss = 0.0
@@ -145,8 +204,26 @@ def train():
         else:
             patience_cnt += 1
             if patience_cnt >= PATIENCE:
+                torch.save({
+                    "model": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    "scheduler": scheduler.state_dict(),
+                    "epoch": epoch,
+                    "best_val_f1": best_val_f1,
+                    "patience_cnt": patience_cnt,
+                }, FULL_CKPT)
                 print(f"  → Early stopping (patience={PATIENCE})")
                 break
+
+        # 全状態チェックポイント（中断時の厳密再開用）
+        torch.save({
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
+            "epoch": epoch,
+            "best_val_f1": best_val_f1,
+            "patience_cnt": patience_cnt,
+        }, FULL_CKPT)
 
     # ── テスト ──
     print("\n--- テスト評価 ---")
@@ -164,7 +241,7 @@ def train():
     test_labels = torch.cat(test_labels)
     test_f1 = f1_score_multilabel(test_preds, test_labels)
     print(f"test_F1 (seen): {test_f1:.4f}")
-    print(f"RF baseline:    0.916")
+    print("RF baseline:    0.916")
 
 
 if __name__ == "__main__":
